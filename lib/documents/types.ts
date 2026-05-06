@@ -13,6 +13,17 @@ export interface DocumentSummary {
   [key: string]: unknown
 }
 
+export interface ReviewFormProps<T = unknown> {
+  relatorioId: string
+  data: T
+}
+
+export interface DashboardProps<T = unknown> {
+  relatorioId: string
+  data: T
+  history?: T[]
+}
+
 export interface DocumentHandler<T = unknown> {
   id: string
   displayName: string
@@ -24,19 +35,18 @@ export interface DocumentHandler<T = unknown> {
   extractionPrompt: string
   extractionSchema: object
 
-  ReviewForm: ComponentType<{ data: T; onChange: (d: T) => void }>
-  Dashboard: ComponentType<{ data: T; history?: T[] }>
+  ReviewForm: ComponentType<ReviewFormProps<T>>
+  Dashboard: ComponentType<DashboardProps<T>>
 
   generateText: (data: T) => string
   computeSummary: (data: T) => DocumentSummary
 }
 
 /**
- * Storage type for the registry. `unknown` em invariant positions cria
- * incompatibilidade com handlers concretos (ReviewForm/onChange é
- * contravariante). Aqui declaramos as assinaturas como `(data: any) =>`
- * para permitir que o registry guarde handlers de tipos heterogêneos —
- * o consumidor reidrata o tipo via `schema` ou via cast explícito.
+ * Storage type for the registry. Handlers concretos têm `T` em posições
+ * invariantes (ReviewForm.data é covariante, mas o registry precisa aceitar
+ * handlers de tipos heterogêneos). Usamos `any` aqui — consumidores reidratam
+ * o tipo via `schema` ou cast explícito.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyDocumentHandler = DocumentHandler<any>

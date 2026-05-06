@@ -1,16 +1,57 @@
+import Link from "next/link"
+import { notFound, redirect } from "next/navigation"
+
+import { buttonVariants } from "@/components/ui/button"
+import { loadRelatorioBundle } from "@/lib/relatorios/queries"
+
 export default async function RelatorioDashboardPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const bundle = await loadRelatorioBundle(id)
+  if (!bundle) notFound()
+
+  const { relatorio, extracao, handler } = bundle
+
+  if (relatorio.status !== "verified") {
+    redirect(`/relatorios/${id}/revisar`)
+  }
+
+  const data = extracao?.verified_json ?? extracao?.raw_json
+  const validated = data ? handler.schema.safeParse(data) : null
+  if (!validated?.success) {
+    return (
+      <main className="space-y-4 p-6">
+        <h1 className="text-xl font-semibold">Sem dados para exibir</h1>
+        <p className="text-sm text-muted-foreground">
+          Este relatório está marcado como verificado, mas não tem dados
+          revisados. Tente reextrair o arquivo.
+        </p>
+      </main>
+    )
+  }
+
+  const { Dashboard } = handler
+
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-semibold">Relatório {id}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Placeholder (Sprint 0). Dashboard renderizado pelo handler do tipo de
-        documento entra no Sprint 2.
-      </p>
+    <main className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <Link
+          href="/dashboard"
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
+        >
+          ← Voltar
+        </Link>
+        <Link
+          href={`/relatorios/${id}/revisar`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Editar dados
+        </Link>
+      </div>
+      <Dashboard relatorioId={relatorio.id} data={validated.data} />
     </main>
   )
 }
