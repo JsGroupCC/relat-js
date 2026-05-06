@@ -85,6 +85,12 @@ export function ReviewForm({ relatorioId, data }: Props) {
       try {
         await confirmReviewAction({ relatorioId, verifiedData: values })
       } catch (err) {
+        // redirect() em Server Action lança NEXT_REDIRECT que sobe pelo catch.
+        // É comportamento normal do Next, não erro real — re-throw para o
+        // runtime do Next processar a navegação.
+        if (err instanceof Error && /NEXT_REDIRECT/.test(err.message)) {
+          throw err
+        }
         const msg = err instanceof Error ? err.message : "Erro ao confirmar."
         toast.error(msg)
       }
