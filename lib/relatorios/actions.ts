@@ -7,12 +7,7 @@ import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
 import { createClient } from "@/lib/supabase/server"
 import { stripCnpj } from "@/lib/utils/cnpj"
-import type { Json } from "@/types/database"
-
-import type {
-  Debito,
-  RelatorioSituacaoFiscal,
-} from "@/lib/documents/handlers/relatorio-situacao-fiscal"
+import type { DebitoInsert, Json } from "@/types/database"
 
 interface ConfirmReviewArgs {
   relatorioId: string
@@ -20,17 +15,17 @@ interface ConfirmReviewArgs {
 }
 
 /**
- * Confirma a revisão humana:
- *  - valida verifiedData contra o schema do handler
+ * Confirma a revisão humana. Genérico para qualquer handler:
+ *  - valida verifiedData via handler.schema
+ *  - extrai contribuinte (cnpj+razão social) via handler.extractContribuinte
+ *  - cria/encontra empresa por CNPJ
+ *  - extrai linhas de débitos via handler.extractDebitos (com data_emissao)
  *  - salva extracoes.verified_json
- *  - garante que existe empresa (cnpj+org) e linka relatório
- *  - popula tabela debitos (SIEF / suspensos / PGFN) idempotentemente
- *  - atualiza relatorios.status='verified' + verified_at
+ *  - delete-then-insert em debitos (idempotência)
+ *  - status='verified' + verified_at + redirect pro dashboard
  *
- * O handler usado é determinado pelo relatorio.document_type. Esta função
- * é genérica, mas hoje o único handler é o "relatorio-situacao-fiscal" e
- * a normalização de débitos é específica dele. Quando adicionarmos handlers
- * que também tenham débitos, mover o "como popular débitos" para o handler.
+ * Cada handler é responsável por mapear seu schema próprio para a forma
+ * comum de débitos. Esta função não conhece detalhes de RFB, SEFIN, etc.
  */
 export async function confirmReviewAction(args: ConfirmReviewArgs) {
   const ctx = await getCurrentOrg()
@@ -38,7 +33,9 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
 
   const { data: relatorio, error: relError } = await supabase
     .from("relatorios")
-    .select("id, organization_id, document_type, status, empresa_id, data_emissao_documento")
+    .select(
+      "id, organization_id, document_type, status, empresa_id, data_emissao_documento",
+    )
     .eq("id", args.relatorioId)
     .eq("organization_id", ctx.organizationId)
     .maybeSingle()
@@ -67,16 +64,17 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
     )
   }
 
-  const data = validated.data as RelatorioSituacaoFiscal
+  const data = validated.data
 
-  // Empresa (idempotente por org+cnpj)
+  // Empresa (idempotente por org+cnpj) — handler diz onde achar a identificação.
+  const contribuinte = handler.extractContribuinte(data)
   let empresaId = relatorio.empresa_id
-  if (!empresaId && data.empresa?.cnpj) {
+  if (!empresaId && contribuinte.cnpj) {
     empresaId = await ensureEmpresa(
       supabase,
       ctx.organizationId,
-      data.empresa.cnpj,
-      data.empresa.razao_social,
+      contribuinte.cnpj,
+      contribuinte.razao_social,
     )
   }
 
@@ -87,16 +85,33 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
     .eq("relatorio_id", args.relatorioId)
   if (extError) throw extError
 
-  // Popula tabela debitos — recria do zero (delete + insert) para idempotência
+  // Popula tabela debitos via mapper do handler — recria do zero pra idempotência
+  const { rows: debitoRows, data_emissao } = handler.extractDebitos(data)
   if (empresaId) {
     await supabase.from("debitos").delete().eq("relatorio_id", args.relatorioId)
-    await insertDebitos(
-      supabase,
-      ctx.organizationId,
-      empresaId,
-      args.relatorioId,
-      data,
-    )
+
+    if (debitoRows.length > 0) {
+      const inserts: DebitoInsert[] = debitoRows.map((r) => ({
+        organization_id: ctx.organizationId,
+        empresa_id: empresaId,
+        relatorio_id: args.relatorioId,
+        tipo: r.tipo,
+        receita_codigo: r.receita_codigo,
+        receita_descricao: r.receita_descricao,
+        periodo_apuracao: r.periodo_apuracao,
+        data_vencimento: r.data_vencimento,
+        valor_original: r.valor_original,
+        saldo_devedor: r.saldo_devedor,
+        multa: r.multa,
+        juros: r.juros,
+        saldo_consolidado: r.saldo_consolidado,
+        situacao: r.situacao,
+      }))
+      const { error: insertError } = await supabase
+        .from("debitos")
+        .insert(inserts)
+      if (insertError) throw insertError
+    }
   }
 
   // Atualiza relatorio
@@ -106,6 +121,8 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
       status: "verified",
       verified_at: new Date().toISOString(),
       empresa_id: empresaId,
+      data_emissao_documento:
+        data_emissao ?? relatorio.data_emissao_documento ?? null,
     })
     .eq("id", args.relatorioId)
   if (finalError) throw finalError
@@ -113,6 +130,7 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
   revalidatePath(`/relatorios/${args.relatorioId}`)
   revalidatePath(`/relatorios/${args.relatorioId}/revisar`)
   revalidatePath("/dashboard")
+  revalidatePath("/empresas")
 
   redirect(`/relatorios/${args.relatorioId}`)
 }
@@ -148,59 +166,6 @@ async function ensureEmpresa(
   return created.id
 }
 
-async function insertDebitos(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  orgId: string,
-  empresaId: string,
-  relatorioId: string,
-  data: RelatorioSituacaoFiscal,
-) {
-  const rows: Array<{
-    organization_id: string
-    empresa_id: string
-    relatorio_id: string
-    tipo: string
-    receita_codigo: string | null
-    receita_descricao: string | null
-    periodo_apuracao: string | null
-    data_vencimento: string | null
-    valor_original: number | null
-    saldo_devedor: number | null
-    multa: number | null
-    juros: number | null
-    saldo_consolidado: number | null
-    situacao: string | null
-  }> = []
-
-  const push = (tipo: "sief" | "suspenso" | "pgfn", debito: Debito) => {
-    rows.push({
-      organization_id: orgId,
-      empresa_id: empresaId,
-      relatorio_id: relatorioId,
-      tipo,
-      receita_codigo: debito.receita_codigo ?? null,
-      receita_descricao: debito.receita_descricao ?? null,
-      periodo_apuracao: debito.periodo_apuracao ?? null,
-      data_vencimento: debito.data_vencimento || null,
-      valor_original: debito.valor_original ?? null,
-      saldo_devedor: debito.saldo_devedor ?? null,
-      multa: debito.multa,
-      juros: debito.juros,
-      saldo_consolidado: debito.saldo_consolidado,
-      situacao: debito.situacao ?? null,
-    })
-  }
-
-  for (const d of data.pendencias_sief) push("sief", d)
-  for (const d of data.debitos_exigibilidade_suspensa) push("suspenso", d)
-  for (const d of data.pgfn.debitos) push("pgfn", d)
-
-  if (rows.length === 0) return
-
-  const { error } = await supabase.from("debitos").insert(rows)
-  if (error) throw error
-}
-
 /**
  * Deleta permanentemente um relatório, incluindo:
  * - linha em `relatorios` (CASCADE apaga `extracoes`, `debitos`, `relatorio_shares`)
@@ -221,8 +186,6 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
   if (fetchError) throw fetchError
   if (!relatorio) throw new Error("Relatório não encontrado.")
 
-  // Apaga PDF do Storage primeiro (se existir).
-  // Falha não bloqueia — pior caso fica órfão; cron de cleanup pega depois.
   if (relatorio.pdf_path && relatorio.pdf_path !== "pending") {
     await supabase.storage
       .from("fiscal-documents")
@@ -241,6 +204,5 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
 
   revalidatePath("/dashboard")
   revalidatePath("/empresas")
-  // O usuário foi excluído da página atual — redireciona pro dashboard.
   redirect("/dashboard")
 }

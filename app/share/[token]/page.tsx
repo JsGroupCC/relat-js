@@ -1,12 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { Logo } from "@/components/brand/Logo"
-import { ClientView } from "@/lib/documents/handlers/relatorio-situacao-fiscal/ClientView"
 import { loadSharedRelatorio } from "@/lib/share/queries"
-import {
-  relatorioSituacaoFiscalSchema,
-  type RelatorioSituacaoFiscal,
-} from "@/lib/documents/handlers/relatorio-situacao-fiscal/schema"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -20,12 +15,14 @@ export default async function SharePage({
   const shared = await loadSharedRelatorio(token)
   if (!shared) notFound()
 
-  // Validar shape do JSON contra o schema do handler. Se vier malformado
+  // Validar shape do JSON contra o schema do handler resolvido pelo registry.
+  // Cada handler tem seu próprio schema + ClientView. Se vier malformado
   // (ex: handler atualizou o schema depois do verified_json antigo), trata
   // como notFound em vez de exibir lixo.
-  const parsed = relatorioSituacaoFiscalSchema.safeParse(shared.data)
+  const parsed = shared.handler.schema.safeParse(shared.data)
   if (!parsed.success) notFound()
-  const data: RelatorioSituacaoFiscal = parsed.data
+
+  const { ClientView } = shared.handler
 
   return (
     <main className="bg-background py-8 md:py-12">
@@ -33,7 +30,7 @@ export default async function SharePage({
         <header className="no-print mb-8 flex items-center justify-center">
           <Logo variant="auto" size={40} priority />
         </header>
-        <ClientView data={data} empresa={shared.empresa} />
+        <ClientView data={parsed.data} empresa={shared.empresa} />
         <footer className="no-print mt-12 flex items-center justify-center gap-2 border-t pt-6 text-xs text-muted-foreground">
           <Logo variant="auto" size={16} />
           <span>
