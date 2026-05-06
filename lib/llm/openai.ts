@@ -8,13 +8,13 @@ import type {
   LLMProvider,
 } from "./provider"
 
-// Pricing per 1M tokens (input / output) — gpt-5 (placeholder, ajustar conforme tabela atual).
+// Pricing per 1M tokens (input / output) — gpt-5.5 (placeholder; valide em platform.openai.com/pricing).
 const PRICING_PER_M = {
-  input: 2.5,
-  output: 10,
+  input: 5,
+  output: 15,
 } as const
 
-const DEFAULT_MODEL = "gpt-5"
+const DEFAULT_MODEL = "gpt-5.5"
 
 export class OpenAIProvider implements LLMProvider {
   readonly name = "openai" as const
@@ -63,6 +63,9 @@ export class OpenAIProvider implements LLMProvider {
           format: {
             type: "json_schema",
             name: "relatorio_extracao",
+            // strict=false: campos opcionais do Zod (.nullable()) e
+            // additionalProperties=true em alguns sub-objetos não são aceitos
+            // em strict=true. O schema próprio do handler já guia o modelo.
             strict: false,
             schema: req.jsonSchema as Record<string, unknown>,
           },
