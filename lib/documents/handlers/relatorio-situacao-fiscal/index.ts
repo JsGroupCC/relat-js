@@ -1,9 +1,31 @@
-// Handler skeleton — implementation arrives in Sprint 1.
-// Files in this folder will export:
-//   - schema.ts (Zod schema)
-//   - prompt.ts (LLM extraction prompt)
-//   - renderer.tsx (ReviewForm + Dashboard)
-//   - compute.ts (computeSummary)
-// And then be registered via the default export below into lib/documents/registry.ts.
+import type { DocumentHandler } from "@/lib/documents/types"
 
-export {}
+import { Dashboard } from "./Dashboard"
+import { ReviewForm } from "./ReviewForm"
+import { computeSummary } from "./compute"
+import { detect } from "./detect"
+import { extractionJsonSchema, extractionPrompt } from "./prompt"
+import { relatorioSituacaoFiscalSchema, type RelatorioSituacaoFiscal } from "./schema"
+import { generateText } from "./text"
+
+export const relatorioSituacaoFiscalHandler: DocumentHandler<RelatorioSituacaoFiscal> = {
+  id: "relatorio-situacao-fiscal",
+  displayName: "Relatório de Situação Fiscal",
+  category: "fiscal",
+
+  detect,
+
+  schema: relatorioSituacaoFiscalSchema,
+  extractionPrompt,
+  extractionSchema: extractionJsonSchema,
+
+  ReviewForm,
+  Dashboard,
+
+  generateText,
+  computeSummary,
+}
+
+export type { RelatorioSituacaoFiscal } from "./schema"
+export type { Debito } from "./schema"
+export type { RelatorioSituacaoFiscalSummary } from "./compute"

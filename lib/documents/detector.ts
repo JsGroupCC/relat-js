@@ -1,5 +1,5 @@
 import { handlers, type DocumentTypeId } from "@/lib/documents/registry"
-import type { DocumentHandler } from "@/lib/documents/types"
+import type { AnyDocumentHandler } from "@/lib/documents/types"
 
 export interface DetectionResult {
   typeId: DocumentTypeId | null
@@ -8,7 +8,7 @@ export interface DetectionResult {
 
 export function detectDocumentType(pdfText: string): DetectionResult {
   let best: DetectionResult = { typeId: null, confidence: 0 }
-  const entries = Object.entries(handlers) as Array<[DocumentTypeId, DocumentHandler]>
+  const entries = Object.entries(handlers) as Array<[DocumentTypeId, AnyDocumentHandler]>
   for (const [id, handler] of entries) {
     const score = handler.detect(pdfText)
     if (score > best.confidence) {
