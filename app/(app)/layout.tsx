@@ -6,9 +6,12 @@ import {
   Settings2Icon,
   UploadCloudIcon,
 } from "lucide-react"
+import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
+import { OrganizationSwitcher } from "@/components/auth/OrganizationSwitcher"
 import { signoutAction } from "@/lib/auth/actions"
+import { getCurrentOrg, listMyOrganizations } from "@/lib/auth/current-org"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 
@@ -24,13 +27,32 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  let activeOrgId: string | null = null
+  try {
+    const ctx = await getCurrentOrg()
+    activeOrgId = ctx.organizationId
+  } catch (err) {
+    if (err instanceof Error && err.message === "no_organization") {
+      // Sem org ainda — provavelmente um signup que falhou no meio.
+      // Por hora, manda ao logout para reabrir o fluxo.
+      redirect("/login")
+    }
+    throw err
+  }
+
+  const orgs = await listMyOrganizations()
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r bg-muted/20 p-4 md:flex">
-        <div className="mb-6 flex items-baseline gap-2">
+      <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 p-4 md:flex">
+        <div className="mb-4 flex items-baseline gap-2">
           <span className="text-base font-semibold">relat-js</span>
           <span className="text-xs text-muted-foreground">MVP</span>
+        </div>
+        <div className="mb-4">
+          <OrganizationSwitcher orgs={orgs} activeOrgId={activeOrgId} />
         </div>
         <nav className="flex-1 space-y-1">
           {NAV.map((item) => {
@@ -48,7 +70,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="mt-4 space-y-2 border-t pt-4">
-          {user?.email && (
+          {user.email && (
             <p className="truncate text-xs text-muted-foreground" title={user.email}>
               {user.email}
             </p>

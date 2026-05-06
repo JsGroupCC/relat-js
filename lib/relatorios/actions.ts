@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
 import { createClient } from "@/lib/supabase/server"
+import { stripCnpj } from "@/lib/utils/cnpj"
 import type { Json } from "@/types/database"
 
 import type {
@@ -122,7 +123,7 @@ async function ensureEmpresa(
   cnpj: string,
   razaoSocial: string | null,
 ): Promise<string> {
-  const cnpjNormalized = cnpj.replace(/[^\d]/g, "")
+  const cnpjNormalized = stripCnpj(cnpj)
 
   const { data: existing } = await supabase
     .from("empresas")
