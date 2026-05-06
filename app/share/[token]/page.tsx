@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 
+import { Logo } from "@/components/brand/Logo"
 import { ClientView } from "@/lib/documents/handlers/relatorio-situacao-fiscal/ClientView"
 import { loadSharedRelatorio } from "@/lib/share/queries"
 import {
@@ -27,9 +28,18 @@ export default async function SharePage({
   const data: RelatorioSituacaoFiscal = parsed.data
 
   return (
-    <main className="bg-background py-10 md:py-16">
+    <main className="bg-background py-8 md:py-12">
       <div className="mx-auto max-w-3xl px-4 md:px-6">
+        <header className="no-print mb-8 flex items-center justify-center">
+          <Logo variant="auto" size={40} priority />
+        </header>
         <ClientView data={data} empresa={shared.empresa} />
+        <footer className="no-print mt-12 flex items-center justify-center gap-2 border-t pt-6 text-xs text-muted-foreground">
+          <Logo variant="auto" size={16} />
+          <span>
+            Análise gerada por <strong>JsGroup</strong>
+          </span>
+        </footer>
       </div>
     </main>
   )

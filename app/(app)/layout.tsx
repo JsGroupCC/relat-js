@@ -10,6 +10,7 @@ import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
 import { OrganizationSwitcher } from "@/components/auth/OrganizationSwitcher"
+import { Logo } from "@/components/brand/Logo"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { signoutAction } from "@/lib/auth/actions"
 import { getCurrentOrg, listMyOrganizations } from "@/lib/auth/current-org"
@@ -47,12 +48,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 p-4 md:flex">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-base font-semibold tracking-tight">relat-js</span>
-            <span className="text-xs text-muted-foreground">MVP</span>
-          </div>
+      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground p-4 md:flex">
+        <div className="mb-5 flex items-center justify-between gap-2">
+          <Link href="/dashboard" className="inline-flex items-center gap-2">
+            <Logo variant="white" size={28} priority />
+            <span className="text-base font-semibold tracking-tight text-sidebar-foreground">
+              JsGroup
+            </span>
+          </Link>
           <ThemeToggle />
         </div>
         <div className="mb-4">
@@ -65,7 +68,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
                 <Icon className="size-4" />
                 {item.label}
@@ -73,9 +76,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             )
           })}
         </nav>
-        <div className="mt-4 space-y-2 border-t pt-4">
+        <div className="mt-4 space-y-2 border-t border-sidebar-border pt-4">
           {user.email && (
-            <p className="truncate text-xs text-muted-foreground" title={user.email}>
+            <p
+              className="truncate text-xs text-sidebar-foreground/60"
+              title={user.email}
+            >
               {user.email}
             </p>
           )}
@@ -84,7 +90,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               type="submit"
               variant="ghost"
               size="sm"
-              className="w-full justify-start"
+              className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               <LogOutIcon className="mr-2 size-4" />
               Sair

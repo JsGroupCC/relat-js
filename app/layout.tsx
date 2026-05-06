@@ -17,9 +17,28 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "relat-js — Análise fiscal automatizada",
+  title: {
+    default: "JsGroup — Análise fiscal automatizada",
+    template: "%s · JsGroup",
+  },
   description:
-    "Plataforma de análise automatizada de documentos fiscais brasileiros (Receita Federal, PGFN).",
+    "Análise automatizada de relatórios fiscais brasileiros (Receita Federal, PGFN). Por JsGroup.",
+  applicationName: "JsGroup",
+  authors: [{ name: "JsGroup" }],
+  icons: {
+    icon: [
+      { url: "/logo-mark.png", type: "image/png" },
+    ],
+    apple: "/logo-mark.png",
+  },
+  openGraph: {
+    title: "JsGroup — Análise fiscal automatizada",
+    description:
+      "Da extração do PDF da Receita Federal até o texto pronto pro cliente.",
+    images: ["/logo-mark.png"],
+    type: "website",
+    locale: "pt_BR",
+  },
 }
 
 export default function RootLayout({
