@@ -46,7 +46,10 @@ export async function updateSession(request: NextRequest) {
     isAuthRoute ||
     pathname === "/" ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth")
+    pathname.startsWith("/api/auth") ||
+    // /share/[token] é a visão pública para o cliente final — não exige login.
+    // O token opaco autoriza o acesso (validado pela função SQL get_shared_relatorio).
+    pathname.startsWith("/share/")
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
