@@ -1,0 +1,24 @@
+-- Seed local. Rodar somente em dev.
+-- Use após criar pelo menos um usuário via Supabase Auth UI/CLI.
+
+-- Exemplo: criar uma organização demo e linkar o primeiro usuário como owner.
+-- Substitua o e-mail abaixo pelo que você usou no signup.
+
+-- do $$
+-- declare
+--   v_user uuid;
+--   v_org  uuid;
+-- begin
+--   select id into v_user from auth.users where email = 'voce@example.com' limit 1;
+--   if v_user is null then
+--     raise notice 'Usuário não encontrado — pule o seed ou faça signup primeiro.';
+--     return;
+--   end if;
+--
+--   insert into organizations (name, slug)
+--   values ('Org Demo', 'org-demo')
+--   returning id into v_org;
+--
+--   insert into organization_members (organization_id, user_id, role)
+--   values (v_org, v_user, 'owner');
+-- end $$;
