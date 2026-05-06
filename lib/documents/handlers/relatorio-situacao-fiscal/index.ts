@@ -3,7 +3,6 @@ import type { DocumentHandler } from "@/lib/documents/types"
 import { Dashboard } from "./Dashboard"
 import { ReviewForm } from "./ReviewForm"
 import { computeSummary } from "./compute"
-import { detect } from "./detect"
 import { extractionJsonSchema, extractionPrompt } from "./prompt"
 import { relatorioSituacaoFiscalSchema, type RelatorioSituacaoFiscal } from "./schema"
 import { generateText } from "./text"
@@ -13,7 +12,9 @@ export const relatorioSituacaoFiscalHandler: DocumentHandler<RelatorioSituacaoFi
   displayName: "Relatório de Situação Fiscal",
   category: "fiscal",
 
-  detect,
+  // Sprint 1: detector real virá quando tivermos 2+ handlers (classificação
+  // por LLM, sem pdfjs-dist).
+  detect: () => 1,
 
   schema: relatorioSituacaoFiscalSchema,
   extractionPrompt,

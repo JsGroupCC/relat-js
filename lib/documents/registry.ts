@@ -7,6 +7,13 @@ export const handlers = {
 
 export type DocumentTypeId = keyof typeof handlers
 
+/**
+ * Default type usado pelo upload pipeline enquanto só temos um handler.
+ * Quando suportarmos 2+ tipos, troque para uma classificação por LLM barata
+ * (Claude Haiku vendo a primeira página do PDF).
+ */
+export const DEFAULT_DOCUMENT_TYPE: DocumentTypeId = "relatorio-situacao-fiscal"
+
 export function getHandler(id: DocumentTypeId): AnyDocumentHandler {
   return handlers[id]
 }

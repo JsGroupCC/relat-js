@@ -2,11 +2,9 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getCurrentOrg } from "@/lib/auth/current-org"
-import { detectDocumentType } from "@/lib/documents/detector"
-import { handlers, type DocumentTypeId } from "@/lib/documents/registry"
+import { DEFAULT_DOCUMENT_TYPE, handlers } from "@/lib/documents/registry"
 import { extractWithFallback } from "@/lib/llm"
 import { createClient } from "@/lib/supabase/server"
-import { extractPdfText } from "@/lib/utils/pdf"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -23,7 +21,7 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(json)
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "invalid_request", details: parsed.error.flatten() },
+        { error: "invalid_request", details: z.flattenError(parsed.error) },
         { status: 400 },
       )
     }
@@ -63,18 +61,10 @@ export async function POST(request: Request) {
     if (dlError || !blob) throw dlError ?? new Error("download_failed")
     const pdfBytes = new Uint8Array(await blob.arrayBuffer())
 
-    const { text } = await extractPdfText(pdfBytes)
-
-    const detection = detectDocumentType(text)
-    if (!detection.typeId || detection.confidence < 0.4) {
-      return await failRelatorio(
-        supabase,
-        relatorioId,
-        "Tipo de documento não reconhecido. Confira se o PDF é um Relatório de Situação Fiscal.",
-      )
-    }
-
-    const handler = handlers[detection.typeId as DocumentTypeId]
+    // Sprint 1: único handler — assumimos relatorio-situacao-fiscal por padrão.
+    // Quando suportarmos múltiplos tipos, classificamos via LLM aqui.
+    const documentType = DEFAULT_DOCUMENT_TYPE
+    const handler = handlers[documentType]
 
     const result = await extractWithFallback({
       pdfBytes,
@@ -109,7 +99,7 @@ export async function POST(request: Request) {
       .from("relatorios")
       .update({
         status: "reviewing",
-        document_type: detection.typeId,
+        document_type: documentType,
         data_emissao_documento: dataEmissao,
       })
       .eq("id", relatorioId)
@@ -117,7 +107,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       relatorioId,
-      documentType: detection.typeId,
+      documentType,
       provider: result.provider,
       model: result.model,
     })
