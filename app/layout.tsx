@@ -27,15 +27,15 @@ export const metadata: Metadata = {
   authors: [{ name: "JsGroup" }],
   icons: {
     icon: [
-      { url: "/logo-mark.png", type: "image/png" },
+      { url: "/logo-mark.jpg", type: "image/jpeg" },
     ],
-    apple: "/logo-mark.png",
+    apple: "/logo-mark.jpg",
   },
   openGraph: {
     title: "JsGroup — Análise fiscal automatizada",
     description:
       "Da extração do PDF da Receita Federal até o texto pronto pro cliente.",
-    images: ["/logo-mark.png"],
+    images: ["/logo-mark.jpg"],
     type: "website",
     locale: "pt_BR",
   },

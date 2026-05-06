@@ -7,7 +7,7 @@ interface Props {
    * - `auto` (padrão): escolhe a variante pela cor do background ao redor
    *   (light = mark colorido sobre cinza, dark = white sobre transparente)
    *   via classes Tailwind dark:
-   * - `mark`: força a versão colorida (logo-mark.png)
+   * - `mark`: força a versão colorida (logo-mark.jpg)
    * - `white`: força a versão branca (logo-white.png)
    */
   variant?: "auto" | "mark" | "white"
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * Logo JsGroup. Os PNGs ficam em /public/logo-mark.png e /public/logo-white.png.
+ * Logo JsGroup. Os PNGs ficam em /public/logo-mark.jpg e /public/logo-white.png.
  * Se algum dos arquivos não existir, o Next renderiza um broken image — por
  * isso há um fallback CSS com as iniciais "JS" estilizadas, ativável via
  * className="data-[fallback]". Em produção: garanta que os PNGs existam.
@@ -33,7 +33,7 @@ export function Logo({
   priority,
 }: Props) {
   if (variant === "mark" || variant === "white") {
-    const src = variant === "white" ? "/logo-white.png" : "/logo-mark.png"
+    const src = variant === "white" ? "/logo-white.png" : "/logo-mark.jpg"
     return (
       <span className={cn("inline-flex items-center gap-2", className)}>
         <Image
@@ -57,7 +57,7 @@ export function Logo({
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <Image
-        src="/logo-mark.png"
+        src="/logo-mark.jpg"
         alt="JsGroup"
         width={size}
         height={size}
