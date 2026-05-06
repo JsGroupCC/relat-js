@@ -10,6 +10,7 @@ import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
 import { OrganizationSwitcher } from "@/components/auth/OrganizationSwitcher"
+import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { signoutAction } from "@/lib/auth/actions"
 import { getCurrentOrg, listMyOrganizations } from "@/lib/auth/current-org"
 import { createClient } from "@/lib/supabase/server"
@@ -47,9 +48,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 p-4 md:flex">
-        <div className="mb-4 flex items-baseline gap-2">
-          <span className="text-base font-semibold">relat-js</span>
-          <span className="text-xs text-muted-foreground">MVP</span>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <span className="text-base font-semibold tracking-tight">relat-js</span>
+            <span className="text-xs text-muted-foreground">MVP</span>
+          </div>
+          <ThemeToggle />
         </div>
         <div className="mb-4">
           <OrganizationSwitcher orgs={orgs} activeOrgId={activeOrgId} />

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
+import { ShareButton } from "@/components/share/ShareButton"
 import { buttonVariants } from "@/components/ui/button"
 import { loadRelatorioBundle } from "@/lib/relatorios/queries"
 
@@ -37,19 +38,22 @@ export default async function RelatorioDashboardPage({
 
   return (
     <main className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href="/dashboard"
           className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           ← Voltar
         </Link>
-        <Link
-          href={`/relatorios/${id}/revisar`}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          Editar dados
-        </Link>
+        <div className="flex items-center gap-2">
+          <ShareButton relatorioId={relatorio.id} />
+          <Link
+            href={`/relatorios/${id}/revisar`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Editar dados
+          </Link>
+        </div>
       </div>
       <Dashboard relatorioId={relatorio.id} data={validated.data} />
     </main>

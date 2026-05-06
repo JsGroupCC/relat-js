@@ -170,6 +170,32 @@ export type DebitoInsert = {
 }
 export type DebitoUpdate = Partial<DebitoInsert>
 
+export type RelatorioShareRow = {
+  id: string
+  organization_id: string
+  relatorio_id: string
+  token: string
+  created_by: string | null
+  created_at: string
+  expires_at: string | null
+  revoked_at: string | null
+  view_count: number
+  last_viewed_at: string | null
+}
+export type RelatorioShareInsert = {
+  id?: string
+  organization_id: string
+  relatorio_id: string
+  token: string
+  created_by?: string | null
+  created_at?: string
+  expires_at?: string | null
+  revoked_at?: string | null
+  view_count?: number
+  last_viewed_at?: string | null
+}
+export type RelatorioShareUpdate = Partial<RelatorioShareInsert>
+
 // ---- Database --------------------------------------------------------------
 export type Database = {
   public: {
@@ -208,6 +234,12 @@ export type Database = {
         Row: DebitoRow
         Insert: DebitoInsert
         Update: DebitoUpdate
+        Relationships: []
+      }
+      relatorio_shares: {
+        Row: RelatorioShareRow
+        Insert: RelatorioShareInsert
+        Update: RelatorioShareUpdate
         Relationships: []
       }
     }
