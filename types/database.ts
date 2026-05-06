@@ -82,6 +82,7 @@ export type RelatorioRow = {
   pdf_path: string
   pdf_filename: string
   pdf_size_bytes: number | null
+  pdf_sha256: string | null
   data_emissao_documento: string | null
   status: RelatorioStatus
   error_message: string | null
@@ -97,6 +98,7 @@ export type RelatorioInsert = {
   pdf_path: string
   pdf_filename: string
   pdf_size_bytes?: number | null
+  pdf_sha256?: string | null
   data_emissao_documento?: string | null
   status?: RelatorioStatus
   error_message?: string | null

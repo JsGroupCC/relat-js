@@ -200,3 +200,47 @@ async function insertDebitos(
   const { error } = await supabase.from("debitos").insert(rows)
   if (error) throw error
 }
+
+/**
+ * Deleta permanentemente um relatório, incluindo:
+ * - linha em `relatorios` (CASCADE apaga `extracoes`, `debitos`, `relatorio_shares`)
+ * - PDF do Storage `fiscal-documents` (best-effort; falha aqui não bloqueia o delete da linha)
+ *
+ * RLS já garante que só membros da org conseguem apagar.
+ */
+export async function deleteRelatorioAction(relatorioId: string): Promise<void> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+
+  const { data: relatorio, error: fetchError } = await supabase
+    .from("relatorios")
+    .select("id, organization_id, pdf_path")
+    .eq("id", relatorioId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle()
+  if (fetchError) throw fetchError
+  if (!relatorio) throw new Error("Relatório não encontrado.")
+
+  // Apaga PDF do Storage primeiro (se existir).
+  // Falha não bloqueia — pior caso fica órfão; cron de cleanup pega depois.
+  if (relatorio.pdf_path && relatorio.pdf_path !== "pending") {
+    await supabase.storage
+      .from("fiscal-documents")
+      .remove([relatorio.pdf_path])
+      .catch((err) => {
+        console.warn("Falha ao apagar PDF do Storage:", err)
+      })
+  }
+
+  const { error: deleteError } = await supabase
+    .from("relatorios")
+    .delete()
+    .eq("id", relatorioId)
+    .eq("organization_id", ctx.organizationId)
+  if (deleteError) throw deleteError
+
+  revalidatePath("/dashboard")
+  revalidatePath("/empresas")
+  // O usuário foi excluído da página atual — redireciona pro dashboard.
+  redirect("/dashboard")
+}

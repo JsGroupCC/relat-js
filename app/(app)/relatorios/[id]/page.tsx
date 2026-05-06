@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
+import { DeleteRelatorioButton } from "@/components/relatorios/DeleteRelatorioButton"
 import { ShareButton } from "@/components/share/ShareButton"
 import { buttonVariants } from "@/components/ui/button"
 import { loadRelatorioBundle } from "@/lib/relatorios/queries"
@@ -53,6 +54,10 @@ export default async function RelatorioDashboardPage({
           >
             Editar dados
           </Link>
+          <DeleteRelatorioButton
+            relatorioId={relatorio.id}
+            filename={relatorio.pdf_filename}
+          />
         </div>
       </div>
       <Dashboard relatorioId={relatorio.id} data={validated.data} />

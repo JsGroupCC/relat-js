@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
+import { DeleteRelatorioButton } from "@/components/relatorios/DeleteRelatorioButton"
 import { PdfViewer } from "@/components/shared/PdfViewer"
 import { buttonVariants } from "@/components/ui/button"
 import { loadRelatorioBundle } from "@/lib/relatorios/queries"
@@ -37,9 +38,16 @@ export default async function RevisarRelatorioPage({
           {relatorio.error_message ??
             "A extração falhou. Tente subir o arquivo novamente."}
         </p>
-        <Link href="/upload" className={buttonVariants({ variant: "outline" })}>
-          Voltar ao upload
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/upload" className={buttonVariants({ variant: "outline" })}>
+            Voltar ao upload
+          </Link>
+          <DeleteRelatorioButton
+            relatorioId={relatorio.id}
+            filename={relatorio.pdf_filename}
+            variant="ghost"
+          />
+        </div>
       </main>
     )
   }
