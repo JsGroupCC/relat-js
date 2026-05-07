@@ -1,16 +1,21 @@
 import { z } from "zod"
 
+// Pendências SIEF do RFB às vezes vêm com receita_codigo / data / período em
+// branco no PDF (linha agregada, débito de origem antiga). Antes era tudo
+// `z.string()` obrigatório, mas isso fazia a extração falhar com "expected
+// string, received null". Tornar tudo nullable reflete a realidade dos PDFs
+// reais — a tabela `debitos` no banco já é toda nullable nesses campos.
 export const debitoSchema = z.object({
-  receita_codigo: z.string(),
-  receita_descricao: z.string(),
-  periodo_apuracao: z.string(),
-  data_vencimento: z.string(),
-  valor_original: z.number(),
-  saldo_devedor: z.number(),
+  receita_codigo: z.string().nullable(),
+  receita_descricao: z.string().nullable(),
+  periodo_apuracao: z.string().nullable(),
+  data_vencimento: z.string().nullable(),
+  valor_original: z.number().nullable(),
+  saldo_devedor: z.number().nullable(),
   multa: z.number().nullable(),
   juros: z.number().nullable(),
   saldo_consolidado: z.number().nullable(),
-  situacao: z.string(),
+  situacao: z.string().nullable(),
 })
 export type Debito = z.infer<typeof debitoSchema>
 

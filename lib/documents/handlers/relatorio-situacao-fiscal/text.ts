@@ -73,7 +73,7 @@ export function generateText(data: RelatorioSituacaoFiscal): string {
       lines.push("Pendências SIEF:")
       for (const d of data.pendencias_sief) {
         lines.push(
-          `  - ${d.receita_codigo} ${d.receita_descricao} | apuração ${d.periodo_apuracao} | venc. ${formatISODate(d.data_vencimento)} | saldo ${formatBRL(d.saldo_consolidado ?? d.saldo_devedor)} | ${d.situacao}`,
+          `  - ${d.receita_codigo ?? "—"} ${d.receita_descricao ?? ""} | apuração ${d.periodo_apuracao ?? "—"} | venc. ${formatISODate(d.data_vencimento)} | saldo ${formatBRL(d.saldo_consolidado ?? d.saldo_devedor ?? 0)} | ${d.situacao ?? ""}`,
         )
       }
     }
@@ -82,7 +82,7 @@ export function generateText(data: RelatorioSituacaoFiscal): string {
       lines.push("Exigibilidade suspensa:")
       for (const d of data.debitos_exigibilidade_suspensa) {
         lines.push(
-          `  - ${d.receita_codigo} ${d.receita_descricao} | apuração ${d.periodo_apuracao} | saldo ${formatBRL(d.saldo_devedor)} | ${d.situacao}`,
+          `  - ${d.receita_codigo ?? "—"} ${d.receita_descricao ?? ""} | apuração ${d.periodo_apuracao ?? "—"} | saldo ${formatBRL(d.saldo_devedor ?? 0)} | ${d.situacao ?? ""}`,
         )
       }
     }
@@ -91,7 +91,7 @@ export function generateText(data: RelatorioSituacaoFiscal): string {
       lines.push("PGFN (dívida ativa):")
       for (const d of data.pgfn.debitos) {
         lines.push(
-          `  - ${d.receita_codigo} ${d.receita_descricao} | apuração ${d.periodo_apuracao} | saldo ${formatBRL(d.saldo_devedor)} | ${d.situacao}`,
+          `  - ${d.receita_codigo ?? "—"} ${d.receita_descricao ?? ""} | apuração ${d.periodo_apuracao ?? "—"} | saldo ${formatBRL(d.saldo_devedor ?? 0)} | ${d.situacao ?? ""}`,
         )
       }
     }

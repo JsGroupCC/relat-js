@@ -16,7 +16,7 @@ export interface RelatorioSituacaoFiscalSummary extends DocumentSummary {
 }
 
 function saldoConsolidadoOrDevedor(d: Debito): number {
-  return d.saldo_consolidado ?? d.saldo_devedor
+  return d.saldo_consolidado ?? d.saldo_devedor ?? 0
 }
 
 export function computeSummary(
@@ -27,11 +27,11 @@ export function computeSummary(
     0,
   )
   const totalSuspenso = data.debitos_exigibilidade_suspensa.reduce(
-    (sum, d) => sum + d.saldo_devedor,
+    (sum, d) => sum + (d.saldo_devedor ?? 0),
     0,
   )
   const totalPgfn = data.pgfn.debitos.reduce(
-    (sum, d) => sum + d.saldo_devedor,
+    (sum, d) => sum + (d.saldo_devedor ?? 0),
     0,
   )
 

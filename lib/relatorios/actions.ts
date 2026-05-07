@@ -251,6 +251,11 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
  * Retorna `{ ok }` em vez de redirecionar pra que o caller possa orquestrar
  * UI (toast, spinner, retry).
  */
+// Quanto tempo um relatório pode ficar em `extracting` antes de considerarmos
+// que travou (Vercel killed, crash mid-flight, network drop). Vercel maxDuration
+// é 300s; depois disso a função tá morta e o relatório nunca vai sair sozinho.
+const STUCK_EXTRACTING_THRESHOLD_MIN = 10
+
 export async function resetRelatorioForRetryAction(
   relatorioId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -259,14 +264,26 @@ export async function resetRelatorioForRetryAction(
 
   const { data: relatorio, error: fetchError } = await supabase
     .from("relatorios")
-    .select("id, status")
+    .select("id, status, created_at")
     .eq("id", relatorioId)
     .eq("organization_id", ctx.organizationId)
     .maybeSingle()
   if (fetchError) return { ok: false, error: fetchError.message }
   if (!relatorio) return { ok: false, error: "Relatório não encontrado." }
+
   if (relatorio.status === "extracting") {
-    return { ok: false, error: "Esse relatório já está sendo extraído." }
+    // Heurística: se passou tempo suficiente desde o upload e ainda está em
+    // extracting, é porque travou. Permite retry pra desencalhar.
+    const createdAt = new Date(relatorio.created_at).getTime()
+    const ageMin = (Date.now() - createdAt) / 60_000
+    if (ageMin < STUCK_EXTRACTING_THRESHOLD_MIN) {
+      return {
+        ok: false,
+        error:
+          "Esse relatório já está sendo extraído. Espere alguns minutos antes de tentar de novo.",
+      }
+    }
+    // > threshold: consideramos travado, libera o reset
   }
 
   const { error: updateError } = await supabase

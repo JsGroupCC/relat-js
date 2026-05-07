@@ -178,7 +178,7 @@ export function ClientView({ data, empresa }: Props) {
                       {d.periodo_apuracao}
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium tabular-nums">
-                      {brl(d.saldo_consolidado ?? d.saldo_devedor)}
+                      {brl(d.saldo_consolidado ?? d.saldo_devedor ?? 0)}
                     </td>
                     <td className="px-3 py-2.5">
                       <span

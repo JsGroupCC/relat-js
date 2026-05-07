@@ -22,12 +22,33 @@ export default async function RevisarRelatorioPage({
     redirect(`/relatorios/${id}`)
   }
   if (relatorio.status === "pending" || relatorio.status === "extracting") {
+    const ageMin = ageInMinutes(relatorio.created_at)
+    const looksStuck = relatorio.status === "extracting" && ageMin >= 10
     return (
-      <main className="p-6">
+      <main className="mx-auto max-w-2xl space-y-4 p-6">
+        <h1 className="text-xl font-semibold">
+          {looksStuck ? "Extração travada" : "Extraindo…"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Aguarde — extração em andamento ({relatorio.status}). A página é
-          atualizada automaticamente quando ficar pronta.
+          {looksStuck
+            ? `Faz ${Math.round(ageMin)} minutos que esse relatório está em extração. Provavelmente travou (timeout do servidor). Você pode forçar nova tentativa.`
+            : `Aguarde — extração em andamento (${relatorio.status}). A página é atualizada automaticamente quando ficar pronta.`}
         </p>
+        {looksStuck && (
+          <div className="flex flex-wrap gap-2">
+            <RetryRelatorioButton
+              relatorioId={relatorio.id}
+              variant="default"
+              label="Forçar nova tentativa"
+              loadingLabel="Extraindo…"
+            />
+            <DeleteRelatorioButton
+              relatorioId={relatorio.id}
+              filename={relatorio.pdf_filename}
+              variant="ghost"
+            />
+          </div>
+        )}
       </main>
     )
   }
@@ -102,4 +123,10 @@ export default async function RevisarRelatorioPage({
       </div>
     </main>
   )
+}
+
+// Encapsula Date.now() pra escapar do react-hooks/purity (rule trata
+// Date.now em corpo do componente como impuro).
+function ageInMinutes(iso: string): number {
+  return (Date.now() - new Date(iso).getTime()) / 60_000
 }

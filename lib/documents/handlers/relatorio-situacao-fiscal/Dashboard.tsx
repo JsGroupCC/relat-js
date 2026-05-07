@@ -204,7 +204,7 @@ export function Dashboard({ data }: Props) {
                       <TableCell>{d.periodo_apuracao}</TableCell>
                       <TableCell>{formatDate(d.data_vencimento)}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {brl(d.saldo_consolidado ?? d.saldo_devedor)}
+                        {brl(d.saldo_consolidado ?? d.saldo_devedor ?? 0)}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {d.situacao}
