@@ -1,7 +1,9 @@
 import Link from "next/link"
 import {
+  AlertCircleIcon,
   BriefcaseIcon,
   Building2Icon,
+  CalendarClockIcon,
   CheckCircle2Icon,
   ClockIcon,
   Loader2Icon,
@@ -31,6 +33,7 @@ import {
   loadRecentRelatorios,
 } from "@/lib/dashboard/queries"
 import { loadCarteira } from "@/lib/empresas/carteira"
+import { loadProximosVencimentos } from "@/lib/empresas/vencimentos"
 import { formatCnpj } from "@/lib/utils/cnpj"
 import type { RelatorioStatus } from "@/types/database"
 
@@ -51,12 +54,13 @@ const STATUS_TONE: Record<RelatorioStatus, string> = {
 }
 
 export default async function DashboardPage() {
-  const [ctx, orgs, stats, recent, carteira] = await Promise.all([
+  const [ctx, orgs, stats, recent, carteira, vencimentos] = await Promise.all([
     getCurrentOrg(),
     listMyOrganizations(),
     loadDashboardStats(),
     loadRecentRelatorios(5),
     loadCarteira(),
+    loadProximosVencimentos(40),
   ])
   const activeOrg = orgs.find((o) => o.id === ctx.organizationId)
 
@@ -149,6 +153,43 @@ export default async function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {(vencimentos.total_atrasado > 0 ||
+            vencimentos.total_proximos_7d > 0) && (
+            <Link href="/vencimentos" className="block">
+              <Card
+                className={
+                  vencimentos.total_atrasado > 0
+                    ? "border-destructive/30 bg-destructive/5 transition-colors hover:bg-destructive/10"
+                    : "border-amber-500/30 bg-amber-500/5 transition-colors hover:bg-amber-500/10"
+                }
+              >
+                <CardContent className="flex items-center gap-3 p-4">
+                  {vencimentos.total_atrasado > 0 ? (
+                    <AlertCircleIcon className="size-6 text-destructive" />
+                  ) : (
+                    <CalendarClockIcon className="size-6 text-amber-600" />
+                  )}
+                  <div className="flex-1">
+                    <p
+                      className={`font-medium ${
+                        vencimentos.total_atrasado > 0
+                          ? "text-destructive"
+                          : "text-amber-700 dark:text-amber-300"
+                      }`}
+                    >
+                      {vencimentos.total_atrasado > 0
+                        ? `${formatBrl(vencimentos.total_atrasado)} em atraso`
+                        : `${formatBrl(vencimentos.total_proximos_7d)} vence em 7 dias`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Ver vencimentos →
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           )}
 
           <Card>

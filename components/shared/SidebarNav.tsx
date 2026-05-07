@@ -2,6 +2,7 @@ import Link from "next/link"
 import {
   BriefcaseIcon,
   Building2Icon,
+  CalendarClockIcon,
   FileTextIcon,
   HomeIcon,
   type LucideIcon,
@@ -21,6 +22,7 @@ export const NAV: NavItem[] = [
   { href: "/relatorios", label: "Relatórios", icon: FileTextIcon },
   { href: "/empresas", label: "Empresas", icon: Building2Icon },
   { href: "/carteira", label: "Carteira", icon: BriefcaseIcon },
+  { href: "/vencimentos", label: "Vencimentos", icon: CalendarClockIcon },
   { href: "/configuracoes", label: "Configurações", icon: Settings2Icon },
 ]
 
