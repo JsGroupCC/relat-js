@@ -1,5 +1,6 @@
 import Link from "next/link"
 import {
+  BriefcaseIcon,
   Building2Icon,
   FileTextIcon,
   HomeIcon,
@@ -19,6 +20,7 @@ export const NAV: NavItem[] = [
   { href: "/upload", label: "Upload", icon: UploadCloudIcon },
   { href: "/relatorios", label: "Relatórios", icon: FileTextIcon },
   { href: "/empresas", label: "Empresas", icon: Building2Icon },
+  { href: "/carteira", label: "Carteira", icon: BriefcaseIcon },
   { href: "/configuracoes", label: "Configurações", icon: Settings2Icon },
 ]
 

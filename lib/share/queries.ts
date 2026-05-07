@@ -2,8 +2,10 @@ import "server-only"
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
+import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
 import type { AnyDocumentHandler } from "@/lib/documents/types"
+import { createClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
 
 export interface SharedRelatorio {
@@ -88,4 +90,38 @@ export async function loadSharedRelatorio(
     handler,
     empresa: payload.empresa,
   }
+}
+
+export interface ActiveShareInfo {
+  token: string
+  created_at: string
+  expires_at: string | null
+  view_count: number
+  last_viewed_at: string | null
+}
+
+/**
+ * Para a página interna do relatório: devolve o share ativo (não revogado,
+ * não expirado) com contadores de visualização. null se não tem share.
+ */
+export async function loadActiveShareForRelatorio(
+  relatorioId: string,
+): Promise<ActiveShareInfo | null> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("relatorio_shares")
+    .select("token, created_at, expires_at, view_count, last_viewed_at")
+    .eq("relatorio_id", relatorioId)
+    .eq("organization_id", ctx.organizationId)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  if (!data) return null
+  if (data.expires_at && new Date(data.expires_at) <= new Date()) return null
+
+  return data
 }

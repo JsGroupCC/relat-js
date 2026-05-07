@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation"
 
 import { DeleteRelatorioButton } from "@/components/relatorios/DeleteRelatorioButton"
 import { ShareButton } from "@/components/share/ShareButton"
+import { ShareViewsBadge } from "@/components/share/ShareViewsBadge"
 import { buttonVariants } from "@/components/ui/button"
 import { loadRelatorioBundle } from "@/lib/relatorios/queries"
+import { loadActiveShareForRelatorio } from "@/lib/share/queries"
 
 export default async function RelatorioDashboardPage({
   params,
@@ -20,6 +22,8 @@ export default async function RelatorioDashboardPage({
   if (relatorio.status !== "verified") {
     redirect(`/relatorios/${id}/revisar`)
   }
+
+  const activeShare = await loadActiveShareForRelatorio(relatorio.id)
 
   const data = extracao?.verified_json ?? extracao?.raw_json
   const validated = data ? handler.schema.safeParse(data) : null
@@ -47,6 +51,7 @@ export default async function RelatorioDashboardPage({
           ← Voltar
         </Link>
         <div className="flex items-center gap-2">
+          <ShareViewsBadge share={activeShare} />
           <ShareButton relatorioId={relatorio.id} />
           <Link
             href={`/relatorios/${id}/revisar`}
