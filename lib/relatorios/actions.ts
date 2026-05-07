@@ -232,3 +232,45 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
   revalidatePath("/empresas")
   redirect("/dashboard")
 }
+
+/**
+ * Reseta um relatório com status `failed` (ou `verified`/`reviewing` se o
+ * usuário pedir reextrair) pra que /api/extract possa rodar de novo.
+ *
+ * O cliente é responsável por chamar /api/extract depois — manter o trigger
+ * no front evita timeouts em server actions com janelas curtas.
+ *
+ * Retorna `{ ok }` em vez de redirecionar pra que o caller possa orquestrar
+ * UI (toast, spinner, retry).
+ */
+export async function resetRelatorioForRetryAction(
+  relatorioId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+
+  const { data: relatorio, error: fetchError } = await supabase
+    .from("relatorios")
+    .select("id, status")
+    .eq("id", relatorioId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle()
+  if (fetchError) return { ok: false, error: fetchError.message }
+  if (!relatorio) return { ok: false, error: "Relatório não encontrado." }
+  if (relatorio.status === "extracting") {
+    return { ok: false, error: "Esse relatório já está sendo extraído." }
+  }
+
+  const { error: updateError } = await supabase
+    .from("relatorios")
+    .update({ status: "pending", error_message: null })
+    .eq("id", relatorioId)
+    .eq("organization_id", ctx.organizationId)
+  if (updateError) return { ok: false, error: updateError.message }
+
+  revalidatePath("/relatorios")
+  revalidatePath(`/relatorios/${relatorioId}`)
+  revalidatePath(`/relatorios/${relatorioId}/revisar`)
+
+  return { ok: true }
+}
