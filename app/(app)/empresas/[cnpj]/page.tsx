@@ -7,6 +7,7 @@ import {
   XCircleIcon,
 } from "lucide-react"
 
+import { EditEmpresaButton } from "@/components/empresas/EditEmpresaButton"
 import { EvolucaoChart } from "@/components/empresas/EvolucaoChart"
 import { SourceCard } from "@/components/empresas/SourceCard"
 import { buttonVariants } from "@/components/ui/button"
@@ -81,13 +82,16 @@ export default async function EmpresaDetailPage({
             )}
           </p>
         </div>
-        <Link
-          href={`/empresas/${empresa.cnpj}/historico`}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <ClockIcon className="mr-2 size-4" />
-          Histórico e comparações
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <EditEmpresaButton empresa={empresa} />
+          <Link
+            href={`/empresas/${empresa.cnpj}/historico`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ClockIcon className="mr-2 size-4" />
+            Histórico e comparações
+          </Link>
+        </div>
       </header>
 
       {snapshot.length > 0 && (
