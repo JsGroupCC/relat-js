@@ -282,3 +282,87 @@ export async function resetRelatorioForRetryAction(
 
   return { ok: true }
 }
+
+/**
+ * Apaga vários relatórios em massa. Limita a 50 por chamada — proteção
+ * contra "delete all" acidental e contra request enorme.
+ *
+ * Apaga PDFs do Storage best-effort (paralelo); em seguida deleta as
+ * linhas em uma única query (CASCADE leva extracoes/debitos junto).
+ *
+ * Audita cada delete individualmente pra preservar rastreabilidade fina,
+ * mas grava só UM snapshot da carteira no fim (cascata só muda totais
+ * uma vez).
+ */
+export async function bulkDeleteRelatoriosAction(
+  ids: string[],
+): Promise<{ ok: true; deleted: number } | { ok: false; error: string }> {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, error: "Nenhum relatório selecionado." }
+  }
+  if (ids.length > 50) {
+    return { ok: false, error: "Máximo 50 relatórios por vez." }
+  }
+
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+
+  // Confirma que TODOS os IDs pertencem à org (RLS já filtra, mas listar
+  // explicitamente garante que partial-match não passe silenciosamente).
+  const { data: rows, error: fetchError } = await supabase
+    .from("relatorios")
+    .select("id, pdf_path, pdf_filename, document_type")
+    .in("id", ids)
+    .eq("organization_id", ctx.organizationId)
+  if (fetchError) return { ok: false, error: fetchError.message }
+  if (!rows || rows.length === 0) {
+    return { ok: false, error: "Nenhum relatório encontrado." }
+  }
+
+  // Best-effort: apaga PDFs no Storage. Falhas viram warn, não bloqueiam.
+  const pdfPaths = rows
+    .map((r) => r.pdf_path)
+    .filter((p): p is string => !!p && p !== "pending")
+  if (pdfPaths.length > 0) {
+    await supabase.storage
+      .from("fiscal-documents")
+      .remove(pdfPaths)
+      .catch((err) => {
+        console.warn("Falha ao apagar PDFs em massa:", err)
+      })
+  }
+
+  const validIds = rows.map((r) => r.id)
+  const { error: deleteError } = await supabase
+    .from("relatorios")
+    .delete()
+    .in("id", validIds)
+    .eq("organization_id", ctx.organizationId)
+  if (deleteError) return { ok: false, error: deleteError.message }
+
+  await Promise.all(
+    rows.map((r) =>
+      recordAudit({
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        action: "relatorio.delete",
+        resourceType: "relatorio",
+        resourceId: r.id,
+        metadata: {
+          pdf_filename: r.pdf_filename,
+          document_type: r.document_type,
+          bulk: true,
+        },
+      }),
+    ),
+  )
+
+  await recordCarteiraSnapshot(ctx.organizationId)
+
+  revalidatePath("/relatorios")
+  revalidatePath("/dashboard")
+  revalidatePath("/empresas")
+  revalidatePath("/carteira")
+
+  return { ok: true, deleted: rows.length }
+}
