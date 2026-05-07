@@ -11,6 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { getCurrentOrg } from "@/lib/auth/current-org"
+import {
+  FONTE_LABEL as FONTE_FULL_LABEL,
+  handlersByFonte,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira-types"
 import { listAllRelatorios } from "@/lib/relatorios/queries-list"
 import { createClient } from "@/lib/supabase/server"
 import { formatCnpj, stripCnpj } from "@/lib/utils/cnpj"
@@ -35,18 +40,11 @@ interface ActiveEmpresa {
   razao_social: string | null
 }
 
-// Mapeia o searchParam ?fonte= pros document_types reais. Mantemos alias
-// curto na URL pra não vazar nome interno do handler.
-const FONTE_TO_HANDLERS: Record<string, string[]> = {
-  federal: ["relatorio-situacao-fiscal"],
-  estadual: ["extrato-fiscal-icms-rn"],
-  municipal: ["pendencias-iss-natal"],
-}
+// `?fonte=` aceita aliases que correspondem ao FonteFiscal do shared types.
+const VALID_FONTES = ["federal", "estadual", "municipal"] as const
 
-const FONTE_LABEL: Record<string, string> = {
-  federal: "Federal",
-  estadual: "Estadual",
-  municipal: "Municipal",
+function isValidFonte(v: string | undefined): v is FonteFiscal {
+  return !!v && (VALID_FONTES as readonly string[]).includes(v)
 }
 
 export default async function RelatoriosIndexPage({
@@ -58,8 +56,8 @@ export default async function RelatoriosIndexPage({
   const statusFilter = parseStatusFilter(params.status)
   const cnpjFilter = params.cnpj ? stripCnpj(params.cnpj) : undefined
   const fonteFilter =
-    params.fonte && FONTE_TO_HANDLERS[params.fonte] ? params.fonte : undefined
-  const documentTypes = fonteFilter ? FONTE_TO_HANDLERS[fonteFilter] : undefined
+    isValidFonte(params.fonte) ? params.fonte : undefined
+  const documentTypes = fonteFilter ? handlersByFonte(fonteFilter) : undefined
 
   const [all, activeEmpresa] = await Promise.all([
     listAllRelatorios({
@@ -90,7 +88,7 @@ export default async function RelatoriosIndexPage({
             {fonteFilter && (
               <>
                 {" "}
-                · fonte: {FONTE_LABEL[fonteFilter]}
+                · fonte: {FONTE_FULL_LABEL[fonteFilter]}
               </>
             )}
           </p>

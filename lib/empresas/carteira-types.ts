@@ -15,6 +15,32 @@ export const FONTE_LABEL: Record<FonteFiscal, string> = {
   outros: "Outros",
 }
 
+/**
+ * Mapeia handler ID → fonte fiscal. Centralizado aqui pra evitar 3-4 cópias
+ * espalhadas por carteira/vencimentos/debitos-detalhados/page-de-relatorios.
+ *
+ * Ao adicionar handler novo, adicione aqui também.
+ */
+export const HANDLER_TO_FONTE: Record<string, FonteFiscal> = {
+  "relatorio-situacao-fiscal": "federal",
+  "extrato-fiscal-icms-rn": "estadual",
+  "pendencias-iss-natal": "municipal",
+}
+
+export function fonteFromHandlerId(handlerId: string): FonteFiscal {
+  return HANDLER_TO_FONTE[handlerId] ?? "outros"
+}
+
+/**
+ * Inversa: pra cada fonte, quais handlers pertencem. Usado pelo
+ * /relatorios?fonte= pra resolver alias → document_types da query.
+ */
+export function handlersByFonte(fonte: FonteFiscal): string[] {
+  return Object.entries(HANDLER_TO_FONTE)
+    .filter(([, f]) => f === fonte)
+    .map(([id]) => id)
+}
+
 export interface CarteiraRow {
   empresa_id: string
   cnpj: string

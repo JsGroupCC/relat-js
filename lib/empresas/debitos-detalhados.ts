@@ -1,14 +1,18 @@
 import "server-only"
 
 import { getCurrentOrg } from "@/lib/auth/current-org"
-import type { DocumentTypeId } from "@/lib/documents/registry"
+import {
+  FONTE_LABEL,
+  fonteFromHandlerId,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira-types"
 import { createClient } from "@/lib/supabase/server"
 
 export interface DebitoDetalhado {
   empresa_cnpj: string
   empresa_razao_social: string | null
   empresa_nome_fantasia: string | null
-  fonte: "federal" | "estadual" | "municipal" | "outros"
+  fonte: FonteFiscal
   fonte_label: string
   handler_id: string
   tipo: string
@@ -26,19 +30,6 @@ export interface DebitoDetalhado {
   situacao: string | null
   relatorio_data_emissao: string | null
   relatorio_pdf: string
-}
-
-const HANDLER_FONTE: Record<string, DebitoDetalhado["fonte"]> = {
-  "relatorio-situacao-fiscal": "federal",
-  "extrato-fiscal-icms-rn": "estadual",
-  "pendencias-iss-natal": "municipal",
-}
-
-const FONTE_LABEL: Record<DebitoDetalhado["fonte"], string> = {
-  federal: "Federal",
-  estadual: "Estadual",
-  municipal: "Municipal",
-  outros: "Outros",
 }
 
 /**
@@ -84,8 +75,8 @@ export async function loadDebitosDetalhados(): Promise<DebitoDetalhado[]> {
       const empresa = empresaById.get(d.empresa_id ?? "")
       if (!empresa) return null
       const relatorio = d.relatorio_id ? relatorioById.get(d.relatorio_id) : null
-      const handlerId = d.tipo.split(":", 1)[0] as DocumentTypeId
-      const fonte = HANDLER_FONTE[handlerId] ?? "outros"
+      const handlerId = d.tipo.split(":", 1)[0]
+      const fonte = fonteFromHandlerId(handlerId)
       const subTipo = d.tipo.includes(":")
         ? d.tipo.slice(d.tipo.indexOf(":") + 1)
         : ""

@@ -1,10 +1,14 @@
 import "server-only"
 
 import { getCurrentOrg } from "@/lib/auth/current-org"
-import type { DocumentTypeId } from "@/lib/documents/registry"
+import {
+  fonteFromHandlerId,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira-types"
 import { createClient } from "@/lib/supabase/server"
 
-export type FonteFiscalVenc = "federal" | "estadual" | "municipal" | "outros"
+// Mantém alias por compat com callers existentes.
+export type FonteFiscalVenc = FonteFiscal
 
 export interface VencimentoItem {
   id: string
@@ -35,12 +39,6 @@ export interface VencimentosSnapshot {
   total_atrasado: number
   total_proximos_7d: number
   total_proximos_30d: number
-}
-
-const HANDLER_FONTE: Record<string, FonteFiscalVenc> = {
-  "relatorio-situacao-fiscal": "federal",
-  "extrato-fiscal-icms-rn": "estadual",
-  "pendencias-iss-natal": "municipal",
 }
 
 /**
@@ -93,8 +91,8 @@ export async function loadProximosVencimentos(
     if ((d.saldo_devedor ?? 0) <= 0) continue
     const emp = empresaById.get(d.empresa_id)
     if (!emp) continue
-    const handlerId = d.tipo.split(":", 1)[0] as DocumentTypeId
-    const fonte = HANDLER_FONTE[handlerId] ?? "outros"
+    const handlerId = d.tipo.split(":", 1)[0]
+    const fonte = fonteFromHandlerId(handlerId)
     const venc = d.data_vencimento as string
 
     // Diferença em dias (UTC) — positivo = futuro, negativo = atrasado

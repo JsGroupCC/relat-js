@@ -36,7 +36,21 @@ export async function loadCarteiraEvolucao(
     .eq("organization_id", ctx.organizationId)
     .gte("snapshot_date", cutoff)
     .order("snapshot_date", { ascending: true })
-  if (error) throw error
+
+  // Tabela pode ainda não existir (migration 20260506000400 não aplicada).
+  // Tratar como "sem histórico ainda" em vez de quebrar a página.
+  if (error) {
+    if (
+      error.code === "42P01" || // undefined_table
+      error.message?.toLowerCase().includes("does not exist")
+    ) {
+      console.warn(
+        "[carteira-evolucao] carteira_snapshots não existe — aplique a migration.",
+      )
+      return []
+    }
+    throw error
+  }
   if (!data) return []
 
   return data.map((r) => ({

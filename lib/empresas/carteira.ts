@@ -1,8 +1,8 @@
 import "server-only"
 
 import { getCurrentOrg } from "@/lib/auth/current-org"
-import type { DocumentTypeId } from "@/lib/documents/registry"
 import {
+  fonteFromHandlerId,
   type CarteiraRow,
   type CarteiraSnapshot,
   type FonteFiscal,
@@ -17,12 +17,6 @@ export {
   type CarteiraSnapshot,
   type FonteFiscal,
 } from "@/lib/empresas/carteira-types"
-
-const HANDLER_FONTE: Record<string, FonteFiscal> = {
-  "relatorio-situacao-fiscal": "federal",
-  "extrato-fiscal-icms-rn": "estadual",
-  "pendencias-iss-natal": "municipal",
-}
 
 /**
  * Devolve a "carteira" da org ATIVA (cookie). Resolve a org via getCurrentOrg
@@ -133,6 +127,6 @@ function emptyFonteAcc(): Record<FonteFiscal, number> {
 }
 
 function fonteFromTipo(tipo: string): FonteFiscal {
-  const prefix = tipo.split(":", 1)[0] as DocumentTypeId
-  return HANDLER_FONTE[prefix] ?? "outros"
+  const prefix = tipo.split(":", 1)[0]
+  return fonteFromHandlerId(prefix)
 }
