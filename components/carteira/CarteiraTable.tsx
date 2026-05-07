@@ -202,8 +202,17 @@ export function CarteiraTable({ snapshot }: Props) {
                     >
                       {r.razao_social ?? formatCnpj(r.cnpj)}
                     </Link>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {formatCnpj(r.cnpj)}
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {formatCnpj(r.cnpj)}
+                      </span>
+                      <Link
+                        href={`/relatorios?cnpj=${r.cnpj}`}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        title="Ver relatórios desta empresa"
+                      >
+                        Relatórios →
+                      </Link>
                     </div>
                   </TableCell>
                   {FONTES.map((f) => (
