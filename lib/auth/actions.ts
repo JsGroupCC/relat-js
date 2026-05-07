@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
+import { recordAudit } from "@/lib/audit/log"
 import { createClient } from "@/lib/supabase/server"
 
 const loginSchema = z.object({
@@ -100,6 +101,23 @@ export async function signupAction(
   if (memberError) {
     return { ok: false, error: `Falha ao linkar membership: ${memberError.message}` }
   }
+
+  await recordAudit({
+    organizationId: org.id,
+    userId,
+    action: "user.signup",
+    resourceType: "user",
+    resourceId: userId,
+    metadata: { email: parsed.data.email },
+  })
+  await recordAudit({
+    organizationId: org.id,
+    userId,
+    action: "org.create",
+    resourceType: "organization",
+    resourceId: org.id,
+    metadata: { name: parsed.data.orgName, slug },
+  })
 
   redirect("/dashboard")
 }

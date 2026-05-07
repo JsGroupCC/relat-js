@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { createClient } from "@/lib/supabase/server"
 
@@ -80,6 +81,15 @@ export async function addMemberAction(
   })
   if (insertError) return { ok: false, error: insertError.message }
 
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "member.add",
+    resourceType: "user",
+    resourceId: userId,
+    metadata: { email: parsed.data.email, role: parsed.data.role },
+  })
+
   revalidatePath("/configuracoes/membros")
   return { ok: true }
 }
@@ -106,12 +116,32 @@ export async function changeMemberRoleAction(
   }
 
   const supabase = await createClient()
+
+  const { data: previous } = await supabase
+    .from("organization_members")
+    .select("role")
+    .eq("organization_id", ctx.organizationId)
+    .eq("user_id", parsed.data.userId)
+    .maybeSingle()
+
   const { error } = await supabase
     .from("organization_members")
     .update({ role: parsed.data.role })
     .eq("organization_id", ctx.organizationId)
     .eq("user_id", parsed.data.userId)
   if (error) return { ok: false, error: error.message }
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "member.role_change",
+    resourceType: "user",
+    resourceId: parsed.data.userId,
+    metadata: {
+      from: previous?.role ?? null,
+      to: parsed.data.role,
+    },
+  })
 
   revalidatePath("/configuracoes/membros")
   return { ok: true }
@@ -159,6 +189,15 @@ export async function removeMemberAction(userId: string): Promise<MembersActionR
     .eq("organization_id", ctx.organizationId)
     .eq("user_id", parsed.data.userId)
   if (error) return { ok: false, error: error.message }
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "member.remove",
+    resourceType: "user",
+    resourceId: parsed.data.userId,
+    metadata: { previous_role: target?.role ?? null },
+  })
 
   revalidatePath("/configuracoes/membros")
   return { ok: true }

@@ -8,6 +8,12 @@ export interface ClassificationResult {
   typeId: DocumentTypeId | null
   confidence: number // 0..1
   reason?: string
+  /**
+   * O modelo identificou que o PDF é uma imagem digitalizada sem camada de
+   * texto (scan/foto). Nesses casos, a extração estruturada por LLM falha:
+   * o PDF precisa passar por OCR ou ser exportado de novo a partir do site.
+   */
+  looksScanned: boolean
   tokensInput: number
   tokensOutput: number
   costUsd: number
@@ -42,6 +48,7 @@ export async function classifyDocument(
       typeId: null,
       confidence: 0,
       reason: "Nenhum handler registrado.",
+      looksScanned: false,
       tokensInput: 0,
       tokensOutput: 0,
       costUsd: 0,
@@ -54,6 +61,7 @@ export async function classifyDocument(
       typeId: onlyId,
       confidence: 1,
       reason: "single_handler_default",
+      looksScanned: false,
       tokensInput: 0,
       tokensOutput: 0,
       costUsd: 0,
@@ -89,7 +97,7 @@ export async function classifyDocument(
         {
           role: "system",
           content:
-            "Você classifica documentos fiscais brasileiros. Olhe APENAS o cabeçalho/primeira página do PDF para identificar a origem. Devolva exatamente um dos IDs listados ou 'unknown' se não bater com nenhum.",
+            "Você classifica documentos fiscais brasileiros. Olhe APENAS o cabeçalho/primeira página do PDF para identificar a origem. Devolva exatamente um dos IDs listados ou 'unknown' se não bater com nenhum. Se o PDF parecer ser uma imagem digitalizada/escaneada (sem camada de texto selecionável — letras pixeladas, alinhamento torto, marcas de scanner), marque looksScanned=true; caso contrário, false.",
         },
         {
           role: "user",
@@ -97,7 +105,7 @@ export async function classifyDocument(
             { type: "input_file", file_id: file.id },
             {
               type: "input_text",
-              text: `Tipos disponíveis:\n${optionsText}\n\nResponda em JSON: {"typeId": "<id ou 'unknown'>", "confidence": 0..1, "reason": "frase curta"}.`,
+              text: `Tipos disponíveis:\n${optionsText}\n\nResponda em JSON: {"typeId": "<id ou 'unknown'>", "confidence": 0..1, "reason": "frase curta", "looksScanned": true|false}.`,
             },
           ],
         },
@@ -110,11 +118,12 @@ export async function classifyDocument(
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["typeId", "confidence", "reason"],
+            required: ["typeId", "confidence", "reason", "looksScanned"],
             properties: {
               typeId: { type: "string" },
               confidence: { type: "number" },
               reason: { type: "string" },
+              looksScanned: { type: "boolean" },
             },
           },
         },
@@ -125,6 +134,7 @@ export async function classifyDocument(
       typeId: string
       confidence: number
       reason: string
+      looksScanned: boolean
     }
 
     const tokensInput = response.usage?.input_tokens ?? 0
@@ -143,6 +153,7 @@ export async function classifyDocument(
       typeId,
       confidence: parsed.confidence ?? 0,
       reason: parsed.reason,
+      looksScanned: parsed.looksScanned ?? false,
       tokensInput,
       tokensOutput,
       costUsd,

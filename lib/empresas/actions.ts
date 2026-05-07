@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
+import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { createClient } from "@/lib/supabase/server"
 import { isValidCnpj, stripCnpj } from "@/lib/utils/cnpj"
@@ -60,13 +61,26 @@ export async function createEmpresaAction(
     return { ok: false, error: "Já existe uma empresa com esse CNPJ." }
   }
 
-  const { error } = await supabase.from("empresas").insert({
-    organization_id: ctx.organizationId,
-    cnpj,
-    razao_social: parsed.data.razao_social,
-    nome_fantasia: parsed.data.nome_fantasia ?? null,
-  })
+  const { data: created, error } = await supabase
+    .from("empresas")
+    .insert({
+      organization_id: ctx.organizationId,
+      cnpj,
+      razao_social: parsed.data.razao_social,
+      nome_fantasia: parsed.data.nome_fantasia ?? null,
+    })
+    .select("id")
+    .single()
   if (error) return { ok: false, error: error.message }
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "empresa.create",
+    resourceType: "empresa",
+    resourceId: created.id,
+    metadata: { cnpj, razao_social: parsed.data.razao_social },
+  })
 
   revalidatePath("/empresas")
   redirect(`/empresas/${cnpj}`)
@@ -92,16 +106,26 @@ export async function updateEmpresaAction(
   }
 
   const supabase = await createClient()
+  const cnpjClean = stripCnpj(parsed.data.cnpj)
   const { error } = await supabase
     .from("empresas")
     .update({
-      cnpj: stripCnpj(parsed.data.cnpj),
+      cnpj: cnpjClean,
       razao_social: parsed.data.razao_social,
       nome_fantasia: parsed.data.nome_fantasia ?? null,
     })
     .eq("id", parsed.data.id)
     .eq("organization_id", ctx.organizationId)
   if (error) return { ok: false, error: error.message }
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "empresa.update",
+    resourceType: "empresa",
+    resourceId: parsed.data.id,
+    metadata: { cnpj: cnpjClean, razao_social: parsed.data.razao_social },
+  })
 
   revalidatePath("/empresas")
   return { ok: true }
@@ -113,12 +137,31 @@ export async function deleteEmpresaAction(id: string) {
   if (!parsed.success) throw new Error("ID inválido.")
 
   const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from("empresas")
+    .select("cnpj, razao_social")
+    .eq("id", parsed.data.id)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle()
+
   const { error } = await supabase
     .from("empresas")
     .delete()
     .eq("id", parsed.data.id)
     .eq("organization_id", ctx.organizationId)
   if (error) throw error
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "empresa.delete",
+    resourceType: "empresa",
+    resourceId: parsed.data.id,
+    metadata: existing
+      ? { cnpj: existing.cnpj, razao_social: existing.razao_social }
+      : null,
+  })
 
   revalidatePath("/empresas")
   redirect("/empresas")

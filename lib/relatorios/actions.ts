@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
+import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
 import { createClient } from "@/lib/supabase/server"
@@ -127,6 +128,19 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
     .eq("id", args.relatorioId)
   if (finalError) throw finalError
 
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "relatorio.verify",
+    resourceType: "relatorio",
+    resourceId: args.relatorioId,
+    metadata: {
+      document_type: relatorio.document_type,
+      empresa_id: empresaId,
+      debitos_count: debitoRows.length,
+    },
+  })
+
   revalidatePath(`/relatorios/${args.relatorioId}`)
   revalidatePath(`/relatorios/${args.relatorioId}/revisar`)
   revalidatePath("/dashboard")
@@ -179,7 +193,7 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
 
   const { data: relatorio, error: fetchError } = await supabase
     .from("relatorios")
-    .select("id, organization_id, pdf_path")
+    .select("id, organization_id, pdf_path, pdf_filename, document_type")
     .eq("id", relatorioId)
     .eq("organization_id", ctx.organizationId)
     .maybeSingle()
@@ -201,6 +215,18 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
     .eq("id", relatorioId)
     .eq("organization_id", ctx.organizationId)
   if (deleteError) throw deleteError
+
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+    action: "relatorio.delete",
+    resourceType: "relatorio",
+    resourceId: relatorioId,
+    metadata: {
+      pdf_filename: relatorio.pdf_filename,
+      document_type: relatorio.document_type,
+    },
+  })
 
   revalidatePath("/dashboard")
   revalidatePath("/empresas")

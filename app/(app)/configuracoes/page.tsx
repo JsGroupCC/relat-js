@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { UsersIcon } from "lucide-react"
+import { ClockIcon, UsersIcon } from "lucide-react"
 
 import { getCurrentOrg, listMyOrganizations } from "@/lib/auth/current-org"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +27,20 @@ export default async function ConfiguracoesPage() {
               <CardTitle className="text-base">Membros</CardTitle>
               <CardDescription>
                 Convide e gerencie quem tem acesso à organização.
+              </CardDescription>
+            </CardHeader>
+            <CardContent />
+          </Card>
+        </Link>
+
+        <Link href="/configuracoes/atividade" className="block">
+          <Card className="transition-colors hover:bg-muted/30">
+            <CardHeader>
+              <ClockIcon className="size-6 text-muted-foreground" />
+              <CardTitle className="text-base">Atividade</CardTitle>
+              <CardDescription>
+                Histórico de ações: empresas, relatórios, links públicos e
+                membros.
               </CardDescription>
             </CardHeader>
             <CardContent />

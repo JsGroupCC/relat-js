@@ -3,6 +3,7 @@
 import crypto from "node:crypto"
 import { revalidatePath } from "next/cache"
 
+import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { createClient } from "@/lib/supabase/server"
 
@@ -58,6 +59,7 @@ export async function createShareLinkAction(
       (!existing.expires_at || new Date(existing.expires_at) > new Date())
 
     let token: string
+    let createdNew = false
     if (isActive && existing) {
       token = existing.token
     } else {
@@ -72,6 +74,18 @@ export async function createShareLinkAction(
           created_by: ctx.userId,
         })
       if (insertErr) return { ok: false, error: insertErr.message }
+      createdNew = true
+    }
+
+    if (createdNew) {
+      await recordAudit({
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        action: "share.create",
+        resourceType: "relatorio",
+        resourceId: relatorioId,
+        metadata: null,
+      })
     }
 
     const baseUrl =
@@ -96,13 +110,25 @@ export async function revokeShareLinkAction(
     const ctx = await getCurrentOrg()
     const supabase = await createClient()
 
-    const { error } = await supabase
+    const { data: revoked, error } = await supabase
       .from("relatorio_shares")
       .update({ revoked_at: new Date().toISOString() })
       .eq("relatorio_id", relatorioId)
       .eq("organization_id", ctx.organizationId)
       .is("revoked_at", null)
+      .select("id")
     if (error) return { ok: false, error: error.message }
+
+    if ((revoked?.length ?? 0) > 0) {
+      await recordAudit({
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        action: "share.revoke",
+        resourceType: "relatorio",
+        resourceId: relatorioId,
+        metadata: { revoked_count: revoked!.length },
+      })
+    }
 
     revalidatePath(`/relatorios/${relatorioId}`)
     return { ok: true }

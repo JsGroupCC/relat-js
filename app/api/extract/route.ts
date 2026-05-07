@@ -12,6 +12,7 @@ import {
 } from "@/lib/documents/registry"
 import { classifyDocument } from "@/lib/llm/classifier"
 import { extractWithFallback } from "@/lib/llm"
+import { checkExtractRateLimit } from "@/lib/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -59,6 +60,25 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "invalid_status", status: relatorio.status },
         { status: 409 },
+      )
+    }
+
+    // Rate limit anti-burn: barra surto de extrações que poderia explodir o
+    // custo da OpenAI. Falha o relatório com mensagem amigável em vez de
+    // gastar tokens; user vê quanto falta pra resetar.
+    const rl = await checkExtractRateLimit(ctx.organizationId)
+    if (!rl.ok) {
+      await failRelatorio(supabase, relatorioId, rl.message ?? "Rate limit atingido.")
+      return NextResponse.json(
+        {
+          error: "rate_limited",
+          message: rl.message,
+          hourlyCount: rl.hourlyCount,
+          hourlyLimit: rl.hourlyLimit,
+          dailyCount: rl.dailyCount,
+          dailyLimit: rl.dailyLimit,
+        },
+        { status: 429 },
       )
     }
 
@@ -144,6 +164,18 @@ export async function POST(request: Request) {
       documentType = DEFAULT_DOCUMENT_TYPE
     } else {
       const classification = await classifyDocument(pdfBytes, relatorio.pdf_filename)
+
+      // PDF escaneado (imagem-só, sem camada de texto): a extração estruturada
+      // por LLM não funciona bem. Falha cedo com mensagem clara em vez de
+      // gastar tokens do gpt-5.5 só pra retornar lixo.
+      if (classification.looksScanned) {
+        return await failRelatorio(
+          supabase,
+          relatorioId,
+          "Este PDF parece ser um documento escaneado (imagem). Para extrair os dados, baixe o PDF original direto do site da RFB/SEFAZ/Prefeitura — sem digitalizar/imprimir/escanear novamente.",
+        )
+      }
+
       if (!classification.typeId || classification.confidence < MIN_CONFIDENCE) {
         return await failRelatorio(
           supabase,
