@@ -18,6 +18,7 @@ export async function listAllRelatorios(opts?: {
   status?: RelatorioRow["status"][]
   empresaId?: string
   cnpj?: string
+  documentTypes?: string[]
   limit?: number
 }): Promise<RelatorioListItem[]> {
   const ctx = await getCurrentOrg()
@@ -44,6 +45,9 @@ export async function listAllRelatorios(opts?: {
 
   if (opts?.status && opts.status.length > 0) {
     query = query.in("status", opts.status)
+  }
+  if (opts?.documentTypes && opts.documentTypes.length > 0) {
+    query = query.in("document_type", opts.documentTypes)
   }
   if (resolvedEmpresaId) {
     query = query.eq("empresa_id", resolvedEmpresaId)

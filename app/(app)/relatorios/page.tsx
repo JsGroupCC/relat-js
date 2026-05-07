@@ -27,11 +27,26 @@ const STATUS_LABEL: Record<RelatorioStatus, string> = {
 interface SearchParams {
   status?: string | string[]
   cnpj?: string
+  fonte?: string
 }
 
 interface ActiveEmpresa {
   cnpj: string
   razao_social: string | null
+}
+
+// Mapeia o searchParam ?fonte= pros document_types reais. Mantemos alias
+// curto na URL pra não vazar nome interno do handler.
+const FONTE_TO_HANDLERS: Record<string, string[]> = {
+  federal: ["relatorio-situacao-fiscal"],
+  estadual: ["extrato-fiscal-icms-rn"],
+  municipal: ["pendencias-iss-natal"],
+}
+
+const FONTE_LABEL: Record<string, string> = {
+  federal: "Federal",
+  estadual: "Estadual",
+  municipal: "Municipal",
 }
 
 export default async function RelatoriosIndexPage({
@@ -42,9 +57,16 @@ export default async function RelatoriosIndexPage({
   const params = await searchParams
   const statusFilter = parseStatusFilter(params.status)
   const cnpjFilter = params.cnpj ? stripCnpj(params.cnpj) : undefined
+  const fonteFilter =
+    params.fonte && FONTE_TO_HANDLERS[params.fonte] ? params.fonte : undefined
+  const documentTypes = fonteFilter ? FONTE_TO_HANDLERS[fonteFilter] : undefined
 
   const [all, activeEmpresa] = await Promise.all([
-    listAllRelatorios({ status: statusFilter, cnpj: cnpjFilter }),
+    listAllRelatorios({
+      status: statusFilter,
+      cnpj: cnpjFilter,
+      documentTypes,
+    }),
     cnpjFilter ? loadActiveEmpresa(cnpjFilter) : Promise.resolve(null),
   ])
 
@@ -62,7 +84,13 @@ export default async function RelatoriosIndexPage({
             {statusFilter && (
               <>
                 {" "}
-                · filtrando: {statusFilter.map((s) => STATUS_LABEL[s]).join(", ")}
+                · status: {statusFilter.map((s) => STATUS_LABEL[s]).join(", ")}
+              </>
+            )}
+            {fonteFilter && (
+              <>
+                {" "}
+                · fonte: {FONTE_LABEL[fonteFilter]}
               </>
             )}
           </p>
@@ -106,7 +134,13 @@ export default async function RelatoriosIndexPage({
         </div>
       )}
 
-      <FilterBar active={statusFilter} cnpj={cnpjFilter} />
+      <FilterBar
+        active={statusFilter}
+        cnpj={cnpjFilter}
+        fonte={fonteFilter}
+      />
+
+      <FonteFilterBar active={fonteFilter} status={statusFilter} cnpj={cnpjFilter} />
 
       {all.length === 0 ? (
         <Card>
@@ -153,9 +187,11 @@ export default async function RelatoriosIndexPage({
 function FilterBar({
   active,
   cnpj,
+  fonte,
 }: {
   active: RelatorioStatus[] | undefined
   cnpj: string | undefined
+  fonte: string | undefined
 }) {
   const filters: Array<{ key: string; label: string; statuses: RelatorioStatus[] | null }> = [
     { key: "all", label: "Todos", statuses: null },
@@ -176,11 +212,12 @@ function FilterBar({
         ? "extracting"
         : "all"
 
-  // Preserva o ?cnpj= ao trocar de status, pra não perder o filtro de empresa
+  // Preserva ?cnpj= e ?fonte= ao trocar de status pra não derrubar contexto
   const buildHref = (statuses: RelatorioStatus[] | null) => {
     const parts: string[] = []
     if (statuses) parts.push(`status=${statuses.join(",")}`)
     if (cnpj) parts.push(`cnpj=${cnpj}`)
+    if (fonte) parts.push(`fonte=${fonte}`)
     return parts.length === 0 ? "/relatorios" : `/relatorios?${parts.join("&")}`
   }
 
@@ -197,6 +234,53 @@ function FilterBar({
                 ? buttonVariants({ variant: "default", size: "sm" })
                 : buttonVariants({ variant: "ghost", size: "sm" })
             }
+          >
+            {f.label}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+function FonteFilterBar({
+  active,
+  status,
+  cnpj,
+}: {
+  active: string | undefined
+  status: RelatorioStatus[] | undefined
+  cnpj: string | undefined
+}) {
+  const fontes: Array<{ key: string | null; label: string }> = [
+    { key: null, label: "Todas as fontes" },
+    { key: "federal", label: "Federal" },
+    { key: "estadual", label: "Estadual" },
+    { key: "municipal", label: "Municipal" },
+  ]
+
+  const buildHref = (fonteKey: string | null) => {
+    const parts: string[] = []
+    if (status) parts.push(`status=${status.join(",")}`)
+    if (cnpj) parts.push(`cnpj=${cnpj}`)
+    if (fonteKey) parts.push(`fonte=${fonteKey}`)
+    return parts.length === 0 ? "/relatorios" : `/relatorios?${parts.join("&")}`
+  }
+
+  return (
+    <nav className="flex flex-wrap items-center gap-1">
+      <span className="mr-1 text-xs text-muted-foreground">Fonte:</span>
+      {fontes.map((f) => {
+        const isActive = (active ?? null) === f.key
+        return (
+          <Link
+            key={f.key ?? "all"}
+            href={buildHref(f.key)}
+            className={`rounded-md border px-2 py-1 text-xs ${
+              isActive
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
           >
             {f.label}
           </Link>

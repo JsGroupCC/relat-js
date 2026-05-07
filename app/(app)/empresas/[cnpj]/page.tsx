@@ -10,6 +10,7 @@ import {
 import { EditEmpresaButton } from "@/components/empresas/EditEmpresaButton"
 import { EvolucaoChart } from "@/components/empresas/EvolucaoChart"
 import { SourceCard } from "@/components/empresas/SourceCard"
+import { PrintButton } from "@/components/shared/PrintButton"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -66,7 +67,7 @@ export default async function EmpresaDetailPage({
   const todasOk = snapshot.length > 0 && totalConsolidado === 0
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
+    <main className="print-clean mx-auto max-w-5xl space-y-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -82,8 +83,9 @@ export default async function EmpresaDetailPage({
             )}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 no-print">
           <EditEmpresaButton empresa={empresa} />
+          <PrintButton />
           <Link
             href={`/empresas/${empresa.cnpj}/historico`}
             className={buttonVariants({ variant: "outline", size: "sm" })}
