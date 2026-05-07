@@ -154,13 +154,60 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
 
   // Auto-avanço: se ainda há outro relatório `reviewing` na fila da org,
   // manda o usuário direto pra ele. Útil pra batches (subiu 3 PDFs, confirma
-  // os 3 em sequência sem voltar pro listing). Se a fila acabou, vai pro
-  // dashboard do que acabou de confirmar.
+  // os 3 em sequência sem voltar pro listing).
   const nextReviewingId = await getFirstReviewingRelatorioId()
   if (nextReviewingId && nextReviewingId !== args.relatorioId) {
     redirect(`/relatorios/${nextReviewingId}/revisar`)
   }
+
+  // Acabou a fila. Se esse cliente teve >=2 relatórios verified nos últimos
+  // 30 min (ou seja, foi um batch da MESMA empresa), redireciona pra view
+  // consolidada da empresa em vez do dashboard individual — assim o user vê
+  // os 3 cards (federal/estadual/municipal) lado-a-lado de uma vez.
+  if (empresaId) {
+    const cnpj = await loadEmpresaCnpjForBatchRedirect(
+      supabase,
+      ctx.organizationId,
+      empresaId,
+    )
+    if (cnpj) {
+      redirect(`/empresas/${cnpj}`)
+    }
+  }
   redirect(`/relatorios/${args.relatorioId}`)
+}
+
+/**
+ * Decide se a confirmação encerrou um "batch" da mesma empresa (>=2
+ * relatórios verified nos últimos 30 min). Se sim, devolve o CNPJ pra
+ * o caller redirecionar pra view consolidada. Senão, devolve null.
+ *
+ * Pensado pro fluxo "subi os 3 documentos do mesmo cliente": Federal +
+ * Estadual + Municipal. Após confirmar o último, ir direto pra
+ * /empresas/[cnpj] economiza um clique e mostra a visão completa.
+ */
+async function loadEmpresaCnpjForBatchRedirect(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  empresaId: string,
+): Promise<string | null> {
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+  const { count } = await supabase
+    .from("relatorios")
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("empresa_id", empresaId)
+    .eq("status", "verified")
+    .gte("verified_at", cutoff)
+  if ((count ?? 0) < 2) return null
+
+  const { data: empresa } = await supabase
+    .from("empresas")
+    .select("cnpj")
+    .eq("id", empresaId)
+    .eq("organization_id", orgId)
+    .maybeSingle()
+  return empresa?.cnpj ?? null
 }
 
 async function ensureEmpresa(
