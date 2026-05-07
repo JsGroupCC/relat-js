@@ -1,9 +1,9 @@
 import Link from "next/link"
 import {
+  BriefcaseIcon,
   Building2Icon,
   CheckCircle2Icon,
   ClockIcon,
-  FileTextIcon,
   Loader2Icon,
   UploadCloudIcon,
   XCircleIcon,
@@ -30,6 +30,7 @@ import {
   loadDashboardStats,
   loadRecentRelatorios,
 } from "@/lib/dashboard/queries"
+import { loadCarteira } from "@/lib/empresas/carteira"
 import { formatCnpj } from "@/lib/utils/cnpj"
 import type { RelatorioStatus } from "@/types/database"
 
@@ -50,15 +51,22 @@ const STATUS_TONE: Record<RelatorioStatus, string> = {
 }
 
 export default async function DashboardPage() {
-  const [ctx, orgs, stats, recent] = await Promise.all([
+  const [ctx, orgs, stats, recent, carteira] = await Promise.all([
     getCurrentOrg(),
     listMyOrganizations(),
     loadDashboardStats(),
     loadRecentRelatorios(5),
+    loadCarteira(),
   ])
   const activeOrg = orgs.find((o) => o.id === ctx.organizationId)
 
   const empty = stats.total_relatorios === 0 && stats.total_empresas === 0
+  const formatBrl = (n: number) =>
+    n.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    })
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
@@ -99,9 +107,16 @@ export default async function DashboardPage() {
               href="/empresas"
             />
             <KpiCard
-              label="Relatórios"
-              value={stats.total_relatorios}
-              icon={FileTextIcon}
+              label="Carteira"
+              valueText={formatBrl(carteira.total_geral)}
+              icon={BriefcaseIcon}
+              href="/carteira"
+              tone={carteira.total_geral > 0 ? "amber" : undefined}
+              hint={
+                carteira.qtd_empresas_com_debito > 0
+                  ? `${carteira.qtd_empresas_com_debito} com débito`
+                  : undefined
+              }
             />
             <KpiCard
               label="Verificados"
@@ -251,15 +266,19 @@ export default async function DashboardPage() {
 function KpiCard({
   label,
   value,
+  valueText,
   icon: Icon,
   href,
   tone,
+  hint,
 }: {
   label: string
-  value: number
+  value?: number
+  valueText?: string
   icon: typeof Building2Icon
   href?: string
   tone?: "emerald" | "amber"
+  hint?: string
 }) {
   const valueClass =
     tone === "emerald"
@@ -267,16 +286,20 @@ function KpiCard({
       : tone === "amber"
         ? "text-amber-600"
         : ""
+  const display = valueText ?? (value ?? 0).toString()
   const card = (
     <Card className={href ? "transition-colors hover:bg-muted/30" : ""}>
-      <CardContent className="space-y-1.5 p-4">
+      <CardContent className="space-y-1 p-4">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{label}</p>
           <Icon className="size-4 text-muted-foreground" />
         </div>
         <p className={`text-2xl font-semibold tabular-nums ${valueClass}`}>
-          {value}
+          {display}
         </p>
+        {hint && (
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        )}
       </CardContent>
     </Card>
   )

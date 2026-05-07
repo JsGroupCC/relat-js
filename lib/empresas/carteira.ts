@@ -2,44 +2,21 @@ import "server-only"
 
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import type { DocumentTypeId } from "@/lib/documents/registry"
+import {
+  type CarteiraRow,
+  type CarteiraSnapshot,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira-types"
 import { createClient } from "@/lib/supabase/server"
 
-/**
- * "Fonte fiscal": agrupa débitos pela esfera de origem (federal / estadual /
- * municipal / outros). Mais útil pra contador que `category` (que é a
- * natureza do tributo) — o contador quer saber pra QUEM cada empresa deve.
- *
- * Mapeamento por prefixo do handler — não tem campo no schema do handler
- * porque só faz sentido pro consolidado.
- */
-export type FonteFiscal = "federal" | "estadual" | "municipal" | "outros"
-
-export const FONTE_LABEL: Record<FonteFiscal, string> = {
-  federal: "Federal",
-  estadual: "Estadual",
-  municipal: "Municipal",
-  outros: "Outros",
-}
-
-export interface CarteiraRow {
-  empresa_id: string
-  cnpj: string
-  razao_social: string | null
-  nome_fantasia: string | null
-  /** soma de saldo_devedor de débitos por fonte */
-  por_fonte: Record<FonteFiscal, number>
-  total_geral: number
-  qtd_debitos: number
-  /** data do relatório verified mais recente (qualquer fonte) */
-  ultimo_relatorio_at: string | null
-}
-
-export interface CarteiraSnapshot {
-  rows: CarteiraRow[]
-  total_geral: number
-  total_por_fonte: Record<FonteFiscal, number>
-  qtd_empresas_com_debito: number
-}
+// Re-exports pra que callers não precisem trocar import (compatibilidade
+// com código que já consome de "@/lib/empresas/carteira").
+export {
+  FONTE_LABEL,
+  type CarteiraRow,
+  type CarteiraSnapshot,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira-types"
 
 const HANDLER_FONTE: Record<string, FonteFiscal> = {
   "relatorio-situacao-fiscal": "federal",

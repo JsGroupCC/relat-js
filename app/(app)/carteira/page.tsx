@@ -6,6 +6,8 @@ import {
   DownloadIcon,
 } from "lucide-react"
 
+import { CarteiraChart } from "@/components/carteira/CarteiraChart"
+import { CarteiraTable } from "@/components/carteira/CarteiraTable"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -15,15 +17,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { FONTE_LABEL, loadCarteira, type FonteFiscal } from "@/lib/empresas/carteira"
-import { formatCnpj } from "@/lib/utils/cnpj"
+  FONTE_LABEL,
+  loadCarteira,
+  type FonteFiscal,
+} from "@/lib/empresas/carteira"
 
 const FONTES: FonteFiscal[] = ["federal", "estadual", "municipal", "outros"]
 
@@ -91,6 +88,20 @@ export default async function CarteiraPage() {
         ))}
       </section>
 
+      {snapshot.qtd_empresas_com_debito > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Top 10 empresas</CardTitle>
+            <CardDescription>
+              As que mais devem (soma de débitos consolidada).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CarteiraChart rows={snapshot.rows} limit={10} />
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
           <div>
@@ -109,87 +120,7 @@ export default async function CarteiraPage() {
           </a>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  {FONTES.map((f) => (
-                    <TableHead key={f} className="text-right">
-                      {FONTE_LABEL[f]}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Atualizado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {snapshot.rows.map((r) => (
-                  <TableRow key={r.empresa_id}>
-                    <TableCell className="max-w-[28ch] truncate">
-                      <Link
-                        href={`/empresas/${r.cnpj}`}
-                        className="font-medium hover:underline"
-                      >
-                        {r.razao_social ?? formatCnpj(r.cnpj)}
-                      </Link>
-                      <div className="font-mono text-xs text-muted-foreground">
-                        {formatCnpj(r.cnpj)}
-                      </div>
-                    </TableCell>
-                    {FONTES.map((f) => (
-                      <TableCell
-                        key={f}
-                        className="text-right tabular-nums text-sm"
-                      >
-                        {r.por_fonte[f] > 0
-                          ? formatBrl(r.por_fonte[f])
-                          : <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                    ))}
-                    <TableCell
-                      className={`text-right font-semibold tabular-nums ${
-                        r.total_geral > 0 ? "text-amber-600" : "text-muted-foreground"
-                      }`}
-                    >
-                      {r.total_geral > 0 ? formatBrl(r.total_geral) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {r.ultimo_relatorio_at
-                        ? new Date(r.ultimo_relatorio_at).toLocaleDateString(
-                            "pt-BR",
-                          )
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                <TableRow className="border-t-2 bg-muted/30">
-                  <TableCell className="font-semibold">TOTAL</TableCell>
-                  {FONTES.map((f) => (
-                    <TableCell
-                      key={f}
-                      className="text-right font-semibold tabular-nums"
-                    >
-                      {snapshot.total_por_fonte[f] > 0
-                        ? formatBrl(snapshot.total_por_fonte[f])
-                        : "—"}
-                    </TableCell>
-                  ))}
-                  <TableCell
-                    className={`text-right font-semibold tabular-nums ${
-                      snapshot.total_geral > 0
-                        ? "text-amber-600"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {formatBrl(snapshot.total_geral)}
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <CarteiraTable snapshot={snapshot} />
         </CardContent>
       </Card>
 
