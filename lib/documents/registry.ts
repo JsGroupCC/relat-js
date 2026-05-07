@@ -1,3 +1,4 @@
+import { extratoFiscalIcmsRnHandler } from "@/lib/documents/handlers/extrato-fiscal-icms-rn"
 import { pendenciasIssNatalHandler } from "@/lib/documents/handlers/pendencias-iss-natal"
 import { relatorioSituacaoFiscalHandler } from "@/lib/documents/handlers/relatorio-situacao-fiscal"
 import type { AnyDocumentHandler } from "@/lib/documents/types"
@@ -5,6 +6,7 @@ import type { AnyDocumentHandler } from "@/lib/documents/types"
 export const handlers = {
   "relatorio-situacao-fiscal": relatorioSituacaoFiscalHandler,
   "pendencias-iss-natal": pendenciasIssNatalHandler,
+  "extrato-fiscal-icms-rn": extratoFiscalIcmsRnHandler,
 } as const satisfies Record<string, AnyDocumentHandler>
 
 export type DocumentTypeId = keyof typeof handlers
