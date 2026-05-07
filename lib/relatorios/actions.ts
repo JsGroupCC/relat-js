@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
 import { recordCarteiraSnapshot } from "@/lib/empresas/snapshot-carteira"
+import { getFirstReviewingRelatorioId } from "@/lib/relatorios/queries"
 import { createClient } from "@/lib/supabase/server"
 import { stripCnpj } from "@/lib/utils/cnpj"
 import type { DebitoInsert, Json } from "@/types/database"
@@ -151,6 +152,14 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
   revalidatePath("/empresas")
   revalidatePath("/carteira")
 
+  // Auto-avanço: se ainda há outro relatório `reviewing` na fila da org,
+  // manda o usuário direto pra ele. Útil pra batches (subiu 3 PDFs, confirma
+  // os 3 em sequência sem voltar pro listing). Se a fila acabou, vai pro
+  // dashboard do que acabou de confirmar.
+  const nextReviewingId = await getFirstReviewingRelatorioId()
+  if (nextReviewingId && nextReviewingId !== args.relatorioId) {
+    redirect(`/relatorios/${nextReviewingId}/revisar`)
+  }
   redirect(`/relatorios/${args.relatorioId}`)
 }
 

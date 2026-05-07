@@ -5,7 +5,10 @@ import { DeleteRelatorioButton } from "@/components/relatorios/DeleteRelatorioBu
 import { RetryRelatorioButton } from "@/components/relatorios/RetryRelatorioButton"
 import { PdfViewer } from "@/components/shared/PdfViewer"
 import { buttonVariants } from "@/components/ui/button"
-import { loadRelatorioBundle } from "@/lib/relatorios/queries"
+import {
+  loadRelatorioBundle,
+  loadReviewQueueInfo,
+} from "@/lib/relatorios/queries"
 
 export default async function RevisarRelatorioPage({
   params,
@@ -13,7 +16,10 @@ export default async function RevisarRelatorioPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const bundle = await loadRelatorioBundle(id)
+  const [bundle, queue] = await Promise.all([
+    loadRelatorioBundle(id),
+    loadReviewQueueInfo(id),
+  ])
   if (!bundle) notFound()
 
   const { relatorio, extracao, pdfUrl, handler } = bundle
@@ -97,12 +103,24 @@ export default async function RevisarRelatorioPage({
 
   const { ReviewForm } = handler
 
+  const showQueue =
+    queue.total > 1 && queue.position !== null
   return (
     <main className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="space-y-0.5">
-          <h1 className="text-base font-semibold">{handler.displayName}</h1>
-          <p className="text-xs text-muted-foreground">
+      <header className="flex items-center justify-between gap-3 border-b px-6 py-4">
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-base font-semibold">{handler.displayName}</h1>
+            {showQueue && (
+              <span
+                className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300"
+                title="Revisão em fila — confirmar avança automaticamente para o próximo"
+              >
+                Revisão {queue.position} de {queue.total}
+              </span>
+            )}
+          </div>
+          <p className="truncate text-xs text-muted-foreground">
             {relatorio.pdf_filename}
           </p>
         </div>

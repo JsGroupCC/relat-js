@@ -58,3 +58,63 @@ export async function loadRelatorioBundle(
 
   return { relatorio, extracao, pdfUrl, handler }
 }
+
+export interface ReviewQueueInfo {
+  /** total de relatórios em status reviewing na org */
+  total: number
+  /** posição do relatorioId na fila (1-indexed) — null se não está na fila */
+  position: number | null
+  /** id do próximo reviewing após este (na ordem de criação ASC) — null se for o último */
+  nextId: string | null
+}
+
+/**
+ * Posição do relatório na fila de revisão da org. Usado pra mostrar
+ * "Revisão 2 de 3" no header e pro confirmReviewAction saber pra onde
+ * mandar o usuário depois de confirmar.
+ *
+ * Ordem ASC por created_at — quem foi enviado primeiro aparece primeiro.
+ * Faz sentido pra batches de upload: a UI segue na mesma ordem do dropzone.
+ */
+export async function loadReviewQueueInfo(
+  relatorioId: string,
+): Promise<ReviewQueueInfo> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+
+  const { data: queue } = await supabase
+    .from("relatorios")
+    .select("id")
+    .eq("organization_id", ctx.organizationId)
+    .eq("status", "reviewing")
+    .order("created_at", { ascending: true })
+
+  const ids = (queue ?? []).map((r) => r.id)
+  const idx = ids.indexOf(relatorioId)
+  return {
+    total: ids.length,
+    position: idx >= 0 ? idx + 1 : null,
+    nextId:
+      idx >= 0 && idx + 1 < ids.length ? ids[idx + 1] : null,
+  }
+}
+
+/**
+ * Pega o primeiro relatório reviewing da org. Usado pelo
+ * confirmReviewAction quando o relatório atual NÃO está na fila (ex.: já
+ * foi confirmado e o usuário voltou) — assim ele acha o próximo da fila
+ * mesmo sem indexOf.
+ */
+export async function getFirstReviewingRelatorioId(): Promise<string | null> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("relatorios")
+    .select("id")
+    .eq("organization_id", ctx.organizationId)
+    .eq("status", "reviewing")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  return data?.id ?? null
+}
