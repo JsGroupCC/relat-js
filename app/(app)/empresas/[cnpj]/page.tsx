@@ -4,6 +4,7 @@ import {
   CheckCircle2Icon,
   ClockIcon,
   FileTextIcon,
+  UploadCloudIcon,
   XCircleIcon,
 } from "lucide-react"
 
@@ -84,6 +85,13 @@ export default async function EmpresaDetailPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 no-print">
+          <Link
+            href={`/upload?empresa=${empresa.cnpj}`}
+            className={buttonVariants({ variant: "default", size: "sm" })}
+          >
+            <UploadCloudIcon className="mr-2 size-4" />
+            Adicionar documento
+          </Link>
           <EditEmpresaButton empresa={empresa} />
           <PrintButton />
           <Link

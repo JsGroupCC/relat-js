@@ -1,4 +1,6 @@
 import {
+  AlertCircleIcon,
+  Building2Icon,
   CheckCircle2Icon,
   FileTextIcon,
   LandmarkIcon,
@@ -6,8 +8,23 @@ import {
 } from "lucide-react"
 
 import { UploadDropzone } from "@/components/upload/UploadDropzone"
+import { getCurrentOrg } from "@/lib/auth/current-org"
+import { createClient } from "@/lib/supabase/server"
+import { formatCnpj, stripCnpj } from "@/lib/utils/cnpj"
 
-export default function UploadPage() {
+interface SearchParams {
+  empresa?: string
+}
+
+export default async function UploadPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
+  const empresaCnpj = params.empresa ? stripCnpj(params.empresa) : null
+  const empresa = empresaCnpj ? await loadEmpresa(empresaCnpj) : null
+
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
       <header className="space-y-1">
@@ -17,6 +34,29 @@ export default function UploadPage() {
           extrai os dados antes da revisão.
         </p>
       </header>
+
+      {empresa && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+          <Building2Icon className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium">
+              Subindo para: {empresa.razao_social ?? formatCnpj(empresa.cnpj)}
+            </p>
+            <p className="font-mono text-xs text-muted-foreground">
+              {formatCnpj(empresa.cnpj)}
+            </p>
+            <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+              <AlertCircleIcon className="mt-0.5 size-3 shrink-0" />
+              <span>
+                A empresa final é definida pelo CNPJ que aparece dentro do
+                PDF — se você subir um documento de outro cliente, ele vai
+                pra esse outro cliente. Esse aviso é só pra te lembrar do
+                contexto.
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       <UploadDropzone />
 
@@ -60,4 +100,18 @@ export default function UploadPage() {
       </section>
     </main>
   )
+}
+
+async function loadEmpresa(
+  cnpj: string,
+): Promise<{ cnpj: string; razao_social: string | null } | null> {
+  const ctx = await getCurrentOrg()
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("empresas")
+    .select("cnpj, razao_social")
+    .eq("organization_id", ctx.organizationId)
+    .eq("cnpj", cnpj)
+    .maybeSingle()
+  return data
 }
