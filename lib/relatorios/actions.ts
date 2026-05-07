@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
 import { getHandlerOrNull } from "@/lib/documents/registry"
+import { recordCarteiraSnapshot } from "@/lib/empresas/snapshot-carteira"
 import { createClient } from "@/lib/supabase/server"
 import { stripCnpj } from "@/lib/utils/cnpj"
 import type { DebitoInsert, Json } from "@/types/database"
@@ -141,10 +142,14 @@ export async function confirmReviewAction(args: ConfirmReviewArgs) {
     },
   })
 
+  // Snapshot diário (idempotente) — alimenta o gráfico de evolução em /carteira
+  await recordCarteiraSnapshot(ctx.organizationId)
+
   revalidatePath(`/relatorios/${args.relatorioId}`)
   revalidatePath(`/relatorios/${args.relatorioId}/revisar`)
   revalidatePath("/dashboard")
   revalidatePath("/empresas")
+  revalidatePath("/carteira")
 
   redirect(`/relatorios/${args.relatorioId}`)
 }
@@ -228,8 +233,11 @@ export async function deleteRelatorioAction(relatorioId: string): Promise<void> 
     },
   })
 
+  await recordCarteiraSnapshot(ctx.organizationId)
+
   revalidatePath("/dashboard")
   revalidatePath("/empresas")
+  revalidatePath("/carteira")
   redirect("/dashboard")
 }
 

@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 
 import { CarteiraChart } from "@/components/carteira/CarteiraChart"
+import { CarteiraEvolucaoChart } from "@/components/carteira/CarteiraEvolucaoChart"
 import { CarteiraTable } from "@/components/carteira/CarteiraTable"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -21,6 +22,7 @@ import {
   loadCarteira,
   type FonteFiscal,
 } from "@/lib/empresas/carteira"
+import { loadCarteiraEvolucao } from "@/lib/empresas/carteira-evolucao"
 
 const FONTES: FonteFiscal[] = ["federal", "estadual", "municipal", "outros"]
 
@@ -32,7 +34,10 @@ const formatBrl = (n: number) =>
   })
 
 export default async function CarteiraPage() {
-  const snapshot = await loadCarteira()
+  const [snapshot, evolucao] = await Promise.all([
+    loadCarteira(),
+    loadCarteiraEvolucao(90),
+  ])
 
   if (snapshot.rows.length === 0) {
     return (
@@ -87,6 +92,21 @@ export default async function CarteiraPage() {
           />
         ))}
       </section>
+
+      {evolucao.length >= 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Evolução da carteira</CardTitle>
+            <CardDescription>
+              Total devedor ao longo dos últimos 90 dias · {evolucao.length}{" "}
+              snapshots.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CarteiraEvolucaoChart points={evolucao} />
+          </CardContent>
+        </Card>
+      )}
 
       {snapshot.qtd_empresas_com_debito > 0 && (
         <Card>

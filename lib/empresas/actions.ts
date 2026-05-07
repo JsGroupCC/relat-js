@@ -6,6 +6,7 @@ import { z } from "zod"
 
 import { recordAudit } from "@/lib/audit/log"
 import { getCurrentOrg } from "@/lib/auth/current-org"
+import { recordCarteiraSnapshot } from "@/lib/empresas/snapshot-carteira"
 import { createClient } from "@/lib/supabase/server"
 import { isValidCnpj, stripCnpj } from "@/lib/utils/cnpj"
 
@@ -163,6 +164,9 @@ export async function deleteEmpresaAction(id: string) {
       : null,
   })
 
+  await recordCarteiraSnapshot(ctx.organizationId)
+
   revalidatePath("/empresas")
+  revalidatePath("/carteira")
   redirect("/empresas")
 }

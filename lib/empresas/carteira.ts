@@ -25,22 +25,33 @@ const HANDLER_FONTE: Record<string, FonteFiscal> = {
 }
 
 /**
- * Devolve a "carteira" da org: cada empresa com seus totais consolidados
- * por fonte fiscal (federal / estadual / municipal), somando débitos de
- * todos os relatórios verified.
+ * Devolve a "carteira" da org ATIVA (cookie). Resolve a org via getCurrentOrg
+ * e delega pra loadCarteiraForOrg. Use isto em RSC/páginas — snapshots e
+ * código que já tem o orgId devem chamar loadCarteiraForOrg direto.
+ */
+export async function loadCarteira(): Promise<CarteiraSnapshot> {
+  const ctx = await getCurrentOrg()
+  return loadCarteiraForOrg(ctx.organizationId)
+}
+
+/**
+ * Versão "pure" do carregamento de carteira: recebe orgId em vez de resolver
+ * via cookie. Usada por code paths fora de uma request do usuário (snapshot
+ * jobs, server actions já com ctx em mãos).
  *
  * Por convenção, `debitos.tipo` carrega o `handlerId` como prefixo
  * (ex.: "relatorio-situacao-fiscal:pgfn"). Fazemos o lookup do handler a
  * partir do prefixo e mapeamos pra fonte fiscal.
  */
-export async function loadCarteira(): Promise<CarteiraSnapshot> {
-  const ctx = await getCurrentOrg()
+export async function loadCarteiraForOrg(
+  organizationId: string,
+): Promise<CarteiraSnapshot> {
   const supabase = await createClient()
 
   const { data: empresas, error: empError } = await supabase
     .from("empresas")
     .select("id, cnpj, razao_social, nome_fantasia")
-    .eq("organization_id", ctx.organizationId)
+    .eq("organization_id", organizationId)
     .order("razao_social", { ascending: true, nullsFirst: false })
   if (empError) throw empError
   if (!empresas || empresas.length === 0) {
@@ -65,7 +76,7 @@ export async function loadCarteira(): Promise<CarteiraSnapshot> {
     .select("empresa_id, verified_at, data_emissao_documento")
     .in("empresa_id", empresaIds)
     .eq("status", "verified")
-    .eq("organization_id", ctx.organizationId)
+    .eq("organization_id", organizationId)
 
   const ultimoByEmpresa = new Map<string, string>()
   for (const r of relatorios ?? []) {

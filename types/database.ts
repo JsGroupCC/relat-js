@@ -194,6 +194,36 @@ export type AuditLogInsert = {
 }
 export type AuditLogUpdate = Partial<AuditLogInsert>
 
+export type CarteiraSnapshotRow = {
+  id: string
+  organization_id: string
+  snapshot_date: string
+  total_geral: number
+  total_federal: number
+  total_estadual: number
+  total_municipal: number
+  total_outros: number
+  qtd_empresas_com_debito: number
+  qtd_empresas_total: number
+  created_at: string
+  updated_at: string
+}
+export type CarteiraSnapshotInsert = {
+  id?: string
+  organization_id: string
+  snapshot_date?: string
+  total_geral?: number
+  total_federal?: number
+  total_estadual?: number
+  total_municipal?: number
+  total_outros?: number
+  qtd_empresas_com_debito?: number
+  qtd_empresas_total?: number
+  created_at?: string
+  updated_at?: string
+}
+export type CarteiraSnapshotUpdate = Partial<CarteiraSnapshotInsert>
+
 export type RelatorioShareRow = {
   id: string
   organization_id: string
@@ -270,6 +300,12 @@ export type Database = {
         Row: AuditLogRow
         Insert: AuditLogInsert
         Update: AuditLogUpdate
+        Relationships: []
+      }
+      carteira_snapshots: {
+        Row: CarteiraSnapshotRow
+        Insert: CarteiraSnapshotInsert
+        Update: CarteiraSnapshotUpdate
         Relationships: []
       }
     }
