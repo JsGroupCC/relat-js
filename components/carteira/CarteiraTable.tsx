@@ -1,7 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { SearchIcon, XIcon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronsUpDownIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 
 import {
@@ -34,18 +40,24 @@ interface Props {
   snapshot: CarteiraSnapshot
 }
 
+type SortKey = "empresa" | "total" | "atualizado" | FonteFiscal
+type SortDir = "asc" | "desc"
+
 /**
- * Tabela com busca por razão social/CNPJ e toggle "só com débito".
- * Mantém a linha TOTAL visível, mas recalcula o agregado conforme o filtro.
+ * Tabela com busca por razão social/CNPJ, toggle "só com débito" e sort
+ * clicável em todas as colunas. Mantém a linha TOTAL visível e recalcula
+ * o agregado conforme o filtro.
  */
 export function CarteiraTable({ snapshot }: Props) {
   const [query, setQuery] = useState("")
   const [onlyDebt, setOnlyDebt] = useState(false)
+  const [sortKey, setSortKey] = useState<SortKey>("total")
+  const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const qDigits = stripCnpj(q)
-    return snapshot.rows.filter((r) => {
+    const list = snapshot.rows.filter((r) => {
       if (onlyDebt && r.total_geral <= 0) return false
       if (!q) return true
       const inName =
@@ -54,9 +66,41 @@ export function CarteiraTable({ snapshot }: Props) {
       const inCnpj = qDigits.length > 0 && r.cnpj.includes(qDigits)
       return inName || inCnpj
     })
-  }, [snapshot.rows, query, onlyDebt])
+
+    const dir = sortDir === "asc" ? 1 : -1
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case "empresa":
+          return (
+            (a.razao_social ?? "ㅤ").localeCompare(b.razao_social ?? "ㅤ") *
+            dir
+          )
+        case "atualizado":
+          return ((a.ultimo_relatorio_at ?? "") < (b.ultimo_relatorio_at ?? "")
+            ? -1
+            : 1) * dir
+        case "total":
+          return (a.total_geral - b.total_geral) * dir
+        case "federal":
+        case "estadual":
+        case "municipal":
+        case "outros":
+          return (a.por_fonte[sortKey] - b.por_fonte[sortKey]) * dir
+      }
+    })
+  }, [snapshot.rows, query, onlyDebt, sortKey, sortDir])
 
   const aggregates = useMemo(() => aggregate(filtered), [filtered])
+
+  const onSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortKey(key)
+      // Default desc para colunas numéricas; asc só pra empresa
+      setSortDir(key === "empresa" ? "asc" : "desc")
+    }
+  }
 
   const noResults = filtered.length === 0
   const hasFilters = !!query || onlyDebt
@@ -106,14 +150,36 @@ export function CarteiraTable({ snapshot }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empresa</TableHead>
+              <SortableHead
+                label="Empresa"
+                active={sortKey === "empresa"}
+                dir={sortDir}
+                onClick={() => onSort("empresa")}
+              />
               {FONTES.map((f) => (
-                <TableHead key={f} className="text-right">
-                  {FONTE_LABEL[f]}
-                </TableHead>
+                <SortableHead
+                  key={f}
+                  label={FONTE_LABEL[f]}
+                  active={sortKey === f}
+                  dir={sortDir}
+                  onClick={() => onSort(f)}
+                  align="right"
+                />
               ))}
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Atualizado</TableHead>
+              <SortableHead
+                label="Total"
+                active={sortKey === "total"}
+                dir={sortDir}
+                onClick={() => onSort("total")}
+                align="right"
+              />
+              <SortableHead
+                label="Atualizado"
+                active={sortKey === "atualizado"}
+                dir={sortDir}
+                onClick={() => onSort("atualizado")}
+                align="right"
+              />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -203,6 +269,42 @@ export function CarteiraTable({ snapshot }: Props) {
         </Table>
       </div>
     </div>
+  )
+}
+
+interface SortableHeadProps {
+  label: string
+  active: boolean
+  dir: SortDir
+  onClick: () => void
+  align?: "left" | "right"
+}
+
+function SortableHead({
+  label,
+  active,
+  dir,
+  onClick,
+  align = "left",
+}: SortableHeadProps) {
+  const Icon = !active
+    ? ChevronsUpDownIcon
+    : dir === "asc"
+      ? ArrowUpIcon
+      : ArrowDownIcon
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 ${
+          align === "right" ? "ml-auto" : ""
+        } ${active ? "text-foreground" : "hover:text-foreground"}`}
+      >
+        {label}
+        <Icon className="size-3" />
+      </button>
+    </TableHead>
   )
 }
 

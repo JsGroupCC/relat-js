@@ -127,17 +127,27 @@ export default async function CarteiraPage() {
           <div>
             <CardTitle className="text-base">Carteira por empresa</CardTitle>
             <CardDescription>
-              Soma do saldo devedor por fonte fiscal · ordenado por total
-              decrescente.
+              Soma do saldo devedor por fonte fiscal. Clique nas colunas pra
+              ordenar.
             </CardDescription>
           </div>
-          <a
-            href="/api/carteira/csv"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <DownloadIcon className="mr-2 size-4" />
-            Exportar CSV
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/carteira/csv"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <DownloadIcon className="mr-2 size-4" />
+              CSV resumido
+            </a>
+            <a
+              href="/api/carteira/debitos-csv"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              title="Uma linha por débito — bom pra conferência detalhada no Excel"
+            >
+              <DownloadIcon className="mr-2 size-4" />
+              CSV detalhado
+            </a>
+          </div>
         </CardHeader>
         <CardContent>
           <CarteiraTable snapshot={snapshot} />
