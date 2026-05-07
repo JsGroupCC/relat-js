@@ -42,23 +42,37 @@ interface Props {
 
 type SortKey = "empresa" | "total" | "atualizado" | FonteFiscal
 type SortDir = "asc" | "desc"
+type FonteFilter = "all" | FonteFiscal
+
+// Limiar de concentração: empresas que sozinhas valem ≥ deste percentual
+// do total da carteira ganham um chip "ALTO" — sinal pro contador rever
+// risco/dependência de cliente.
+const CONCENTRATION_THRESHOLD_PERCENT = 10
 
 /**
- * Tabela com busca por razão social/CNPJ, toggle "só com débito" e sort
- * clicável em todas as colunas. Mantém a linha TOTAL visível e recalcula
- * o agregado conforme o filtro.
+ * Tabela com busca, filtro por fonte fiscal, toggle "só com débito" e
+ * sort clicável em todas as colunas. Mantém TOTAL visível e recalcula
+ * agregado conforme o filtro. Highlight "ALTO" nas empresas que
+ * concentram >=10% da carteira.
  */
 export function CarteiraTable({ snapshot }: Props) {
   const [query, setQuery] = useState("")
   const [onlyDebt, setOnlyDebt] = useState(false)
+  const [fonteFilter, setFonteFilter] = useState<FonteFilter>("all")
   const [sortKey, setSortKey] = useState<SortKey>("total")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
+
+  const concentrationCutoff =
+    snapshot.total_geral > 0
+      ? (snapshot.total_geral * CONCENTRATION_THRESHOLD_PERCENT) / 100
+      : Number.POSITIVE_INFINITY
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const qDigits = stripCnpj(q)
     const list = snapshot.rows.filter((r) => {
       if (onlyDebt && r.total_geral <= 0) return false
+      if (fonteFilter !== "all" && r.por_fonte[fonteFilter] <= 0) return false
       if (!q) return true
       const inName =
         (r.razao_social ?? "").toLowerCase().includes(q) ||
@@ -88,7 +102,7 @@ export function CarteiraTable({ snapshot }: Props) {
           return (a.por_fonte[sortKey] - b.por_fonte[sortKey]) * dir
       }
     })
-  }, [snapshot.rows, query, onlyDebt, sortKey, sortDir])
+  }, [snapshot.rows, query, onlyDebt, fonteFilter, sortKey, sortDir])
 
   const aggregates = useMemo(() => aggregate(filtered), [filtered])
 
@@ -103,7 +117,15 @@ export function CarteiraTable({ snapshot }: Props) {
   }
 
   const noResults = filtered.length === 0
-  const hasFilters = !!query || onlyDebt
+  const hasFilters = !!query || onlyDebt || fonteFilter !== "all"
+
+  const fonteOptions: Array<{ key: FonteFilter; label: string }> = [
+    { key: "all", label: "Todas" },
+    { key: "federal", label: "Federal" },
+    { key: "estadual", label: "Estadual" },
+    { key: "municipal", label: "Municipal" },
+    { key: "outros", label: "Outros" },
+  ]
 
   return (
     <div className="space-y-3">
@@ -133,6 +155,7 @@ export function CarteiraTable({ snapshot }: Props) {
             onClick={() => {
               setQuery("")
               setOnlyDebt(false)
+              setFonteFilter("all")
             }}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
@@ -144,6 +167,27 @@ export function CarteiraTable({ snapshot }: Props) {
           {filtered.length} de {snapshot.rows.length} empresa
           {snapshot.rows.length === 1 ? "" : "s"}
         </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="mr-1 text-xs text-muted-foreground">Fonte:</span>
+        {fonteOptions.map((opt) => {
+          const isActive = fonteFilter === opt.key
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setFonteFilter(opt.key)}
+              className={`rounded-md border px-2 py-1 text-xs ${
+                isActive
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
 
       <div className="overflow-x-auto rounded-lg border">
@@ -193,15 +237,32 @@ export function CarteiraTable({ snapshot }: Props) {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((r) => (
+              filtered.map((r) => {
+                const isHighConcentration =
+                  r.total_geral > 0 && r.total_geral >= concentrationCutoff
+                const sharePercent =
+                  snapshot.total_geral > 0
+                    ? (r.total_geral / snapshot.total_geral) * 100
+                    : 0
+                return (
                 <TableRow key={r.empresa_id}>
                   <TableCell className="max-w-[28ch] truncate">
-                    <Link
-                      href={`/empresas/${r.cnpj}`}
-                      className="font-medium hover:underline"
-                    >
-                      {r.razao_social ?? formatCnpj(r.cnpj)}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/empresas/${r.cnpj}`}
+                        className="font-medium hover:underline"
+                      >
+                        {r.razao_social ?? formatCnpj(r.cnpj)}
+                      </Link>
+                      {isHighConcentration && (
+                        <span
+                          className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive"
+                          title={`${sharePercent.toFixed(1)}% da carteira concentrada nesta empresa`}
+                        >
+                          {sharePercent.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">
                         {formatCnpj(r.cnpj)}
@@ -244,7 +305,8 @@ export function CarteiraTable({ snapshot }: Props) {
                       : "—"}
                   </TableCell>
                 </TableRow>
-              ))
+                )
+              })
             )}
 
             {!noResults && (
