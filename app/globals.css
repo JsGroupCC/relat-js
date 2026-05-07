@@ -192,4 +192,24 @@
     background: white;
     color: black;
   }
+  /* Carteira/relatórios em PDF: força paleta neutra e evita corte de linhas */
+  .print-clean {
+    background: white !important;
+    color: black !important;
+  }
+  .print-clean a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+  .print-clean table {
+    page-break-inside: auto;
+  }
+  .print-clean tr {
+    page-break-inside: avoid;
+  }
+  .print-clean .text-amber-600,
+  .print-clean .text-emerald-600,
+  .print-clean .text-destructive {
+    color: black !important;
+  }
 }

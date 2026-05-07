@@ -28,7 +28,7 @@ export function MobileSidebar({ email, orgs, activeOrgId }: Props) {
   const close = () => setOpen(false)
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur md:hidden">
+    <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           aria-label="Abrir menu"

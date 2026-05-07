@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <MobileSidebar email={user.email ?? null} orgs={orgs} activeOrgId={activeOrgId} />
 
       {/* Desktop sidebar fixo */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground p-4 md:flex">
+      <aside className="no-print hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground p-4 md:flex">
         <div className="mb-5 flex items-center justify-between gap-2">
           <Link href="/dashboard" className="inline-flex items-center gap-2">
             <Logo variant="white" size={28} priority />

@@ -9,6 +9,7 @@ import {
 import { CarteiraChart } from "@/components/carteira/CarteiraChart"
 import { CarteiraEvolucaoChart } from "@/components/carteira/CarteiraEvolucaoChart"
 import { CarteiraTable } from "@/components/carteira/CarteiraTable"
+import { PrintButton } from "@/components/shared/PrintButton"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -68,7 +69,7 @@ export default async function CarteiraPage() {
   )
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-6">
+    <main className="print-clean mx-auto max-w-6xl space-y-6 p-6">
       <Header />
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -167,12 +168,17 @@ export default async function CarteiraPage() {
 
 function Header() {
   return (
-    <header className="space-y-1">
-      <h1 className="text-xl font-semibold">Carteira</h1>
-      <p className="text-sm text-muted-foreground">
-        Visão consolidada dos débitos de todos os clientes, separada por
-        esfera fiscal.
-      </p>
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold">Carteira</h1>
+        <p className="text-sm text-muted-foreground">
+          Visão consolidada dos débitos de todos os clientes, separada por
+          esfera fiscal.
+        </p>
+      </div>
+      <div className="no-print">
+        <PrintButton label="Imprimir / PDF" />
+      </div>
     </header>
   )
 }
